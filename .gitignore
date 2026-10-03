@@ -1,0 +1,15 @@
+node_modules/
+/node_modules
+eval-results/
+.team-harness/
+
+artifacts/
+projects/
+.th-init-*/
+.th-onboard-*/
+.opencode/plugins/
+.opencode/oh-my-opencode-slim.json
+.opencode/package.json
+.opencode/bun.lock*
+opencode.json
+opencode.jsonc
