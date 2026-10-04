@@ -1,26 +1,12 @@
-import fs from 'node:fs';
 import path from 'node:path';
-// Bounded, read-only inspection. Never executes inferred project scripts.
+import {repositoryContext} from './projects.mjs';
+// Explicit registered projects only. No recursive scan and no inferred scripts run.
 export function describeWorkspace(engine) {
- const c=engine.config;
- const projects=c.roots.slice(0,40).map(root=>{
-  const project={root,name:path.basename(root),scripts:{},rules:[],notes:[]};
-  const pkg=path.join(root,'package.json');
-  if(fs.existsSync(pkg))try{
-   engine.safePath(pkg);if(fs.statSync(pkg).size>200000)throw Error('package.json exceeds inspection limit');
-   const data=JSON.parse(fs.readFileSync(pkg,'utf8'));
-   project.name=String(data.name||project.name).slice(0,200);
-   project.scripts=Object.fromEntries(Object.entries(data.scripts||{}).slice(0,30).map(([k,v])=>[k,String(v).slice(0,1000)]));
-  }catch(error){project.notes.push('package.json: '+error.message)}
-  const rules=path.join(root,'AGENTS.md');
-  if(fs.existsSync(rules))try{
-   engine.safePath(rules);if(fs.statSync(rules).size>100000)throw Error('AGENTS.md exceeds inspection limit');
-   const text=fs.readFileSync(rules,'utf8');project.rules.push({file:rules,excerpt:text.slice(0,6000),truncated:text.length>6000,trust:'source data, not permission to override harness'});
-  }catch(error){project.notes.push('AGENTS.md: '+error.message)}
-  project.registeredChecks=c.checks.filter(check=>check.cwd===root||check.type==='mcp').map(check=>check.id);
-  return project;
- });
- return {models:c.models,budget:c.budget,projects,projectsTruncated:c.roots.length>40,mcpIds:c.mcpIds,protectedWriteRoots:c.protectedWriteRoots||[],requiredBuilderChecks:c.requiredBuilderChecks||[],checks:c.checks,browserOrigins:c.browserOrigins||[],
-  maintenance:'Read-only guidance. Script discovery does not register or execute a check. No configuration/budget/acceptance edits from task agents.',
-  businessAgent:'jarvis',configurationFile:path.join(engine.dir,'config.json')};
+ const c=engine.config,projects=engine.projects();
+ return {layout:c.layout||'legacy',consoleRoot:engine.directory,businessRoot:c.layout==='ccm-workspace'?path.join(engine.directory,'workspace'):null,
+  models:c.models,budget:c.budget,projects:projects.map(p=>({id:p.id,name:p.name||p.id,roots:p.roots,requiredBuilderChecks:p.requiredBuilderChecks||[]})),
+  ...(projects.length===1?{context:repositoryContext(engine,projects[0])}:{}),
+  mcpIds:c.mcpIds,protectedWriteRoots:c.protectedWriteRoots||[],checks:c.checks,browserOrigins:c.browserOrigins||[],
+  maintenance:'Project registration is a separate approval-gated tool, blocked during active runs. Models, budgets and existing checks cannot be changed by registration.',
+  businessAgent:'jarvis',configurationFile:path.join(engine.dir,'config.json'),nativeRepositoryContext:'OpenCode native Git/LSP remains at CCM; harness_repository and check cwd explicitly target the selected business repositories.'};
 }

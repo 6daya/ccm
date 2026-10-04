@@ -1,0 +1,178 @@
+{
+  "version": "0.2.0",
+  "date": "2026-10-04",
+  "platform": "darwin",
+  "arch": "arm64",
+  "tests": {
+    "total": 39,
+    "passed": 39,
+    "failed": 0
+  },
+  "bootstrap": {
+    "ok": true,
+    "date": "2026-10-04",
+    "opencode": "1.18.34",
+    "kind": "real-opencode-workspace-bootstrap-smoke",
+    "notRealLLM": true,
+    "nativeDependencyCacheReused": true,
+    "harnessDependenciesAbsentBeforeOnboarding": true,
+    "defaultAgent": "jarvis",
+    "relativeProjectDiscovery": true,
+    "providerReferencePreserved": true,
+    "projectRegistrationRequiresApproval": true,
+    "businessShellAndConfigEditDenied": true,
+    "restartRequired": true
+  },
+  "integration": {
+    "ok": true,
+    "notRealLLM": true,
+    "browserMode": "real-playwright-mcp",
+    "nativeDependencyCacheReused": true,
+    "versions": {
+      "opencode": "1.18.34",
+      "slim": "3.0.2",
+      "playwrightMcp": "0.0.83"
+    },
+    "commands": [
+      {
+        "label": "topology",
+        "exit": 0,
+        "ms": 3338
+      },
+      {
+        "label": "observability-phase1",
+        "exit": 0,
+        "ms": 2727
+      },
+      {
+        "label": "observability-resumed",
+        "exit": 0,
+        "ms": 5774
+      }
+    ],
+    "requestCount": 72,
+    "requestsByRole": {
+      "coordinator": 51,
+      "scout": 4,
+      "verifier": 11,
+      "builder": 5,
+      "expert": 1
+    },
+    "expertRequests": 1,
+    "allChildProjectsCorrect": true,
+    "gatewayErrors": 0,
+    "runs": [
+      {
+        "project": "orders-system",
+        "status": "accepted",
+        "roots": [
+          "workspace/web",
+          "workspace/orders",
+          "workspace/payments"
+        ],
+        "tasks": [
+          {
+            "id": "map",
+            "role": "scout",
+            "status": "accepted",
+            "attempts": 1,
+            "checks": {}
+          },
+          {
+            "id": "map-review",
+            "role": "verifier",
+            "status": "accepted",
+            "attempts": 1,
+            "checks": {}
+          }
+        ]
+      },
+      {
+        "project": "orders-system",
+        "status": "accepted",
+        "roots": [
+          "workspace/web",
+          "workspace/orders",
+          "workspace/payments"
+        ],
+        "tasks": [
+          {
+            "id": "broken",
+            "role": "builder",
+            "status": "accepted",
+            "attempts": 2,
+            "checks": {
+              "boundary": {
+                "pass": true,
+                "type": "command",
+                "cwd": "workspace/web"
+              },
+              "playwright": {
+                "pass": true,
+                "type": "mcp"
+              }
+            }
+          },
+          {
+            "id": "broken-review",
+            "role": "verifier",
+            "status": "accepted",
+            "attempts": 1,
+            "checks": {}
+          },
+          {
+            "id": "decision",
+            "role": "expert",
+            "status": "accepted",
+            "attempts": 1,
+            "checks": {}
+          },
+          {
+            "id": "decision-review",
+            "role": "verifier",
+            "status": "accepted",
+            "attempts": 1,
+            "checks": {}
+          },
+          {
+            "id": "retry-review",
+            "role": "verifier",
+            "status": "accepted",
+            "attempts": 1,
+            "checks": {}
+          }
+        ]
+      }
+    ]
+  },
+  "coldStartupAttempts": [
+    {
+      "ok": false,
+      "commands": [
+        {
+          "label": "topology",
+          "exit": null,
+          "ms": 179965
+        }
+      ],
+      "modelRequests": 0
+    },
+    {
+      "ok": false,
+      "commands": [
+        {
+          "label": "topology",
+          "exit": null,
+          "ms": 180024
+        }
+      ],
+      "modelRequests": 0
+    }
+  ],
+  "limitations": [
+    "Fixture model gateway: not real GLM/Opus reasoning or billing.",
+    "Native OpenCode dependencies reused from an installed local cache; cold initialization timed out twice.",
+    "Native Git/LSP remains at CCM; repository tools/check cwd target business roots.",
+    "Windows not tested on a real machine."
+  ]
+}

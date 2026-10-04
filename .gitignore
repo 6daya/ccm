@@ -5,6 +5,8 @@ eval-results/
 
 artifacts/
 projects/
+workspace/*
+!workspace/README.md
 .th-init-*/
 .th-onboard-*/
 .opencode/plugins/

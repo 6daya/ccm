@@ -7,7 +7,7 @@ const txt=content=>({text:content});
 function content(m){return typeof m.content==='string'?m.content:JSON.stringify(m.content)}
 function result(body) {const tools=body.messages.filter(m=>m.role==='tool');const raw=tools.at(-1)?.content;if(typeof raw!=='string')return raw;try{return JSON.parse(raw)}catch{return raw}}
 const definition=(run,id,role,extra={})=>({run,id,role,goal:role==='scout'?'Map order flow across web/orders/payments with source references':'Implement and verify order observability in the owning module',acceptance:['ownership and evidence correct'],dependencies:[],writeFiles:[],checks:[],...extra});
-export async function gateway(root,browserCheck='browser') {
+export async function gateway(root,browserCheck='browser',{project,topologyFiles}={}) {
  const roots={EVAL_TOPOLOGY:{index:0},EVAL_OBSERVABILITY:{index:0,browserCheck}},children=new Map(),requests=[],errors=[];
  const server=http.createServer(async(req,res)=>{
   try{
@@ -25,9 +25,9 @@ export async function gateway(root,browserCheck='browser') {
     let state=children.get(key);if(!state){state={index:0,ev:[]};children.set(key,state)}
     const i=state.index++,h=contract.harness,checkIds=contract.checks.length?contract.checks:contract.target?.checkIds;
     if(role==='scout') {
-     const files=['repos/web/ARCHITECTURE.md','repos/orders/README.md','repos/payments/README.md'];
+     const files=topologyFiles||['repos/web/ARCHITECTURE.md','repos/orders/README.md','repos/payments/README.md'].map(file=>path.join(root,file));
      if(last?.id)state.ev.push(last.id);
-     answer=i<files.length?call('harness_read',{file:path.join(root,files[i]),start:1,end:12}):txt(JSON.stringify({topology:'Browser -> API gateway -> orders -> payments',owners:{orders:'checkout',payments:'payments'},risk:'liveness does not imply payment confirmation',evidenceIds:state.ev}));
+     answer=i<files.length?call('harness_read',{file:files[i],start:1,end:12}):txt(JSON.stringify({topology:'Browser -> API gateway -> orders -> payments',owners:{orders:'checkout',payments:'payments'},risk:'liveness does not imply payment confirmation',evidenceIds:state.ev}));
     }else if(role==='builder') {
      if(h.task==='broken'&&h.attempt===1) {
       answer=i===0?call('harness_write',{file:path.join(root,'common/telemetry.js'),content:'export function trackOrder(){ return "order_submit" }'}):txt('Business insertion into common was rejected by the harness; no files were changed. Need explicit module-boundary decision.');
@@ -57,14 +57,15 @@ export async function gateway(root,browserCheck='browser') {
     const plan=(id,role,extra)=>call('harness_plan',definition(r,id,role,extra));
     const accept=(id,review)=>call('harness_accept',{run:r,task:id,...review?{review}:{}});
     const topology=[
-     ()=>call('harness_status',{}),()=>call('harness_start',{goal:'EVAL_TOPOLOGY: source-linked cross-repository order topology'}),
+     ()=>call('harness_status',{}),...project?[()=>call('harness_select_project',{project}),()=>call('harness_context',{})]:[],()=>call('harness_start',{goal:'EVAL_TOPOLOGY: source-linked cross-repository order topology'}),
      ()=>call('harness_evidence',{file:path.join(root,'repos/web/ARCHITECTURE.md'),start:1,end:12}),
      ()=>plan('map','scout'),()=>prepare('map'),dispatch,
      ()=>plan('map-review','verifier',{target:'map'}),()=>prepare('map-review'),dispatch,
      ()=>accept('map-review'),()=>accept('map','map-review'),()=>call('harness_complete',{run:r}),()=>txt('跨仓拓扑已验证：Browser → API gateway → orders → payments。责任边界及健康检查误判风险均有来源。')
     ];
     const observe=[
-     ()=>call('harness_status',{}),()=>call('harness_start',{goal:'EVAL_OBSERVABILITY: order page instrumentation, scoped escalation and recovery'}),
+     ()=>call('harness_status',{}),...project?[()=>call('harness_select_project',{project}),()=>call('harness_context',{})]:[],()=>call('harness_start',{goal:'EVAL_OBSERVABILITY: order page instrumentation, scoped escalation and recovery'}),
+     ...project?[()=>call('harness_repository',{root,mode:'status'})]:[],
      ()=>call('harness_evidence',{file:path.join(root,'repos/web/ARCHITECTURE.md'),start:1,end:12}),
      ()=>plan('broken','builder',{writeFiles:[path.join(root,'apps/orders.js')],checks:['boundary',roots.EVAL_OBSERVABILITY.browserCheck||'browser']}),()=>prepare('broken'),dispatch,
      ()=>plan('broken-review','verifier',{target:'broken'}),()=>prepare('broken-review'),dispatch,
@@ -78,13 +79,13 @@ export async function gateway(root,browserCheck='browser') {
      ()=>prepare('broken'),dispatch,
      ()=>plan('retry-review','verifier',{target:'broken'}),()=>prepare('retry-review'),dispatch,
      ()=>accept('retry-review'),()=>accept('broken','retry-review'),
-     ()=>call('harness_complete',{run:r}),()=>txt('订单页可观测已完成：公共模块越界写入被拒绝，限定专家给出边界决策，恢复后免费代理实现，Playwright 与接收端事件验收通过。')
+     ...project?[()=>call('harness_repository',{root,mode:'diff'})]:[],()=>call('harness_complete',{run:r}),()=>txt('订单页可观测已完成：公共模块越界写入被拒绝，限定专家给出边界决策，恢复后免费代理实现，Playwright 与接收端事件验收通过。')
     ];
     const steps=name==='EVAL_TOPOLOGY'?topology:observe;
     const i=s.index++;answer=steps[i]?.()||txt('script exhausted');
     requests.push({case:name,step:i,model:body.model,role,tool:answer.call?.name,inputBytes:Buffer.byteLength(raw),maxTokens:body.max_tokens||body.max_completion_tokens});
    }
-   if(contract)requests.push({task:contract.harness.task,model:body.model,role,tool:answer.call?.name,inputBytes:Buffer.byteLength(raw),maxTokens:body.max_tokens||body.max_completion_tokens});
+   if(contract)requests.push({task:contract.harness.task,project:contract.harness.project,contextProject:contract.context?.project,model:body.model,role,tool:answer.call?.name,inputBytes:Buffer.byteLength(raw),maxTokens:body.max_tokens||body.max_completion_tokens});
    const id='chatcmpl-'+crypto.randomUUID(),model=body.model;
    const msg=answer.call?{role:'assistant',content:null,tool_calls:[{id:'call_'+crypto.randomUUID().replaceAll('-',''),type:'function',function:{name:answer.call.name,arguments:JSON.stringify(answer.call.args)}}]}:{role:'assistant',content:answer.text};
    const finish=answer.call?'tool_calls':'stop';

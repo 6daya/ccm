@@ -1,6 +1,7 @@
 // CCM startup profile. Keep company providers and credentials in your existing
 // OpenCode configuration. init writes machine-specific settings to the root config.
 {
+  "$schema": "https://opencode.ai/config.json",
   "default_agent": "jarvis",
   "autoupdate": false,
   "share": "disabled"

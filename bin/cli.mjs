@@ -6,6 +6,7 @@ import {createInterface} from 'node:readline/promises';
 import {stdin,stdout} from 'node:process';
 import {Engine} from '../src/engine.mjs';
 import {defaults,init,packageRoot} from '../src/init.mjs';
+import {describeWorkspace} from '../src/workspace.mjs';
 const args=process.argv.slice(2),cmd=args.shift()||'help';
 const value=(key,fallback)=>{const i=args.indexOf('--'+key);return i>=0?args[i+1]:fallback};
 const flag=key=>args.includes('--'+key);
@@ -25,7 +26,8 @@ async function main() {
      const expert=(await rl.question('可选付费专家 ID（回车关闭）: ')).trim();
      if(expert){const p=JSON.parse(await rl.question('USD/百万 token 价格 JSON {"input":...,"output":...,"cacheRead":...,"cacheWrite":...}: '));config.models.expert={id:expert,free:false,price:p}}
      const mcps=(await rl.question('允许的内部 MCP 配置 ID，逗号分隔（回车无）: ')).trim();config.mcpIds=mcps?mcps.split(',').map(s=>s.trim()):[];
-     const roots=(await rl.question('仓库绝对路径，逗号分隔（回车当前目录）: ')).trim();if(roots)config.roots=roots.split(',').map(s=>fs.realpathSync(s.trim()));
+     if(config.layout==='ccm-workspace')console.log('已发现 workspace/ 项目：'+config.projects.map(p=>p.id).join(', ')+'；跨仓分组与验收请使用配置文件或 Jarvis 向导。');
+     else {const roots=(await rl.question('仓库绝对路径，逗号分隔（回车当前目录）: ')).trim();if(roots)config.roots=roots.split(',').map(s=>fs.realpathSync(s.trim()))}
      const budget=(await rl.question('单任务 USD 预算（回车 10）: ')).trim();if(budget)config.budget.runUsd=Number(budget);
      const protectedRoots=(await rl.question('默认禁止修改的公共模块绝对路径，逗号分隔（回车无）: ')).trim();if(protectedRoots)config.protectedWriteRoots=protectedRoots.split(',').map(s=>path.resolve(s.trim()));
     }finally{rl.close()}
@@ -36,11 +38,15 @@ async function main() {
    for(const key of ['checks','requiredBuilderChecks','browserOrigins','protectedWriteRoots'])if(project[key]!==undefined)config[key]=project[key];
   }
   // Validate first using a temporary directory; no project config mutations on bad input.
-  const tmp=fs.mkdtempSync(path.join(workspace,'.th-init-'));
-  try{fs.mkdirSync(path.join(tmp,'.team-harness'));fs.writeFileSync(path.join(tmp,'.team-harness','config.json'),JSON.stringify(config));new Engine(tmp)}finally{fs.rmSync(tmp,{recursive:true,force:true})}
+  new Engine(workspace,{config});
   output(init(workspace,config));console.log('初始化完成。配置 checks 后，在此目录运行 opencode，正常对话即可。');return;
  }
  if(cmd==='example'){output(defaults(workspace));return}
+ if(cmd==='projects'){output(describeWorkspace(new Engine(workspace)));return}
+ if(cmd==='project-add'){
+  if(!value('config'))throw Error('Provide --config FILE with project roots and explicit checks; existing rules will not be replaced');
+  output(new Engine(workspace).registerProject(JSON.parse(fs.readFileSync(path.resolve(value('config')),'utf8'))));return;
+ }
  if(cmd==='doctor') {
   const e=new Engine(workspace),binary=value('opencode','opencode');
   const v=spawnSync(binary,['--version'],{encoding:'utf8',timeout:10000});
@@ -57,7 +63,7 @@ async function main() {
   const rs=run?[e.status(run)]:Object.values(state.runs);
   const text=rs.map(r=>{
    const usage=Object.values(state.usage).filter(u=>u.run===r.id),usd=usage.reduce((s,u)=>s+u.usd,0)+state.reconciliations.filter(u=>u.run===r.id).reduce((s,u)=>s+u.usd,0);
-   return `# ${r.goal}\n\nRun: ${r.id}\nSession: ${r.session}\nStatus: ${r.status}\nEstimated USD: ${usd.toFixed(6)} (configured prices; not gateway bill)\n\n| Task | Role | Status | Attempts | Model |\n| --- | --- | --- | --- | --- |\n`+Object.values(r.tasks).map(t=>`| ${t.id} | ${t.role} | ${t.status} | ${t.attempts.length} | ${t.attempts.map(a=>a.model).join(', ')} |`).join('\n')+'\n\n'+Object.values(r.tasks).map(t=>`## ${t.id}\n\nAcceptance: ${t.acceptance.join('; ')}\n\n${t.result||'(no result)'}\n\nChecks:\n\n\`\`\`json\n${JSON.stringify(t.checksRun,null,2)}\n\`\`\``).join('\n\n');
+   return `# ${r.goal}\n\nRun: ${r.id}\nProject: ${r.project||"legacy"}\nRepositories: ${(r.scope?.roots||e.config.roots).join(", ")}\nSession: ${r.session}\nStatus: ${r.status}\nEstimated USD: ${usd.toFixed(6)} (configured prices; not gateway bill)\n\n| Task | Role | Status | Attempts | Model |\n| --- | --- | --- | --- | --- |\n`+Object.values(r.tasks).map(t=>`| ${t.id} | ${t.role} | ${t.status} | ${t.attempts.length} | ${t.attempts.map(a=>a.model).join(', ')} |`).join('\n')+'\n\n'+Object.values(r.tasks).map(t=>`## ${t.id}\n\nAcceptance: ${t.acceptance.join('; ')}\n\n${t.result||'(no result)'}\n\nChecks:\n\n\`\`\`json\n${JSON.stringify(t.checksRun,null,2)}\n\`\`\``).join('\n\n');
   }).join('\n\n');if(value('out'))fs.writeFileSync(path.resolve(value('out')),text);else console.log(text);return;
  }
  if(cmd==='resume') {
@@ -70,6 +76,6 @@ async function main() {
  }
  if(cmd==='cancel'){const e=new Engine(workspace);output(e.cancel(value('run')));console.log('本地已取消，写入/新派发会被拒绝。若 OpenCode 仍在线，在主会话说取消以主动 abort；供应商在途请求可能继续计费。');return}
  if(cmd==='eval') {await import('../eval/run.mjs');return}
- console.log(`team-harness 0.1.0 — OpenCode 1.18.34 / Slim 3.0.2\n\nnode ${path.join(packageRoot,'bin/cli.mjs')} init [--workspace PATH] [--free provider/model] [--config FILE]\n  example | doctor [--opencode PATH] [--repair-lock]\n  status [--run ID] | resume [--run ID] | report [--out FILE]\n  reconcile --run ID --task ID --usd TOTAL --note GATEWAY_RECEIPT\n  cancel --run ID\n  eval\n\nAPI keys remain in your existing OpenCode provider config. No actual model is called by init or doctor.`);
+ console.log(`CCM 0.2.0 — OpenCode 1.18.34 / Slim 3.0.2\n\nnode ${path.join(packageRoot,'bin/cli.mjs')} init [--workspace PATH] [--free provider/model] [--config FILE]\n  projects | project-add --config FILE\n  example | doctor [--opencode PATH] [--repair-lock]\n  status [--run ID] | resume [--run ID] | report [--out FILE]\n  reconcile --run ID --task ID --usd TOTAL --note GATEWAY_RECEIPT\n  cancel --run ID\n  eval\n\nAPI keys remain in your existing OpenCode provider config. No actual model is called by init or doctor.`);
 }
 main().catch(e=>{console.error('Harness:',e.message);process.exitCode=1});

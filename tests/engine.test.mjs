@@ -7,6 +7,7 @@ import {Engine,hash} from '../src/engine.mjs';
 function setup(t,options={}) {
  const root=fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(),'th-test-')));t.after(()=>fs.rmSync(root,{recursive:true,force:true}));
  const config={version:1,models:{free:{id:'internal/free',free:true},expert:{id:'internal/expert',free:false,price:{input:10,output:50,cacheRead:1,cacheWrite:10}}},roots:[root],mcpIds:['knowledge'],budget:{monthUsd:1000,runUsd:10},limits:{maxNodes:20,maxAttempts:2,freeConcurrency:2,paidConcurrency:1,maxPaidNodes:2,runMinutes:120,maxPacketChars:24000,systemReserveTokens:12000,expertOutputTokens:4000},checks:[{id:'check',cwd:root,argv:[process.execPath,'-e','console.log("verified")']}],...options};
+ if(typeof options==='function')options(config,root);
  fs.mkdirSync(path.join(root,'.team-harness'));fs.writeFileSync(path.join(root,'.team-harness','config.json'),JSON.stringify(config));
  fs.writeFileSync(path.join(root,'spec.md'),'Order logic belongs in apps/orders.\nCommon telemetry must remain business neutral.\n');
  const e=new Engine(root),r=e.start('root-session','fixture'),ev=e.evidence(r.id,{file:path.join(root,'spec.md'),start:1,end:2});return {root,e,r,ev};
@@ -58,7 +59,7 @@ test('usage is idempotent and counts cache and reasoning at configured prices',t
  const {e,r,ev}=setup(t);plan(e,r,'a','expert');const p=dispatch(e,r,'a',[ev.id],'boundary: concrete ambiguity');const m={id:'m1',sessionID:'child-'+p.attempt,role:'assistant',modelID:'expert',time:{completed:Date.now()},tokens:{input:100,output:20,reasoning:5,cache:{read:50,write:10}},cost:99};e.usage(m);e.usage(m);assert.equal(Object.keys(e.read().usage).length,1);assert.ok(Math.abs(e.read().usage.m1.usd-0.0024)<1e-10);e.finish(p.attempt,'decision');assert.equal(e.status(r.id).tasks.a.attempts[0].settled,true);
 });
 test('main agent cannot grant protected module writes or omit mandatory checks',t=>{
- const {e,r,root}=setup(t);e.config.protectedWriteRoots=[path.join(root,'common')];e.config.requiredBuilderChecks=['check'];
+ const {e,r,root}=setup(t,(c,root)=>{c.protectedWriteRoots=[path.join(root,'common')];c.requiredBuilderChecks=['check']});
  assert.throws(()=>plan(e,r,'bad-scope','builder',{writeFiles:[path.join(root,'common/event.js')],checks:['check']}),/protected module/);
  assert.throws(()=>plan(e,r,'bad-check','builder',{writeFiles:[path.join(root,'app.js')],checks:[]}),/mandatory/);
 });
@@ -73,9 +74,8 @@ test('review from an old attempt cannot approve a replacement candidate',t=>{
  const {e,r,ev}=setup(t);plan(e,r,'a');const a=dispatch(e,r,'a');e.finish(a.attempt,'candidate 1');plan(e,r,'v','verifier',{target:'a'});const v=dispatch(e,r,'v',[ev.id]);e.finish(v.attempt,JSON.stringify({verdict:'pass',acceptance:{0:true},evidenceIds:[ev.id]}));e.accept(r.id,'v');e.retry(r.id,'a');const b=dispatch(e,r,'a');e.finish(b.attempt,'candidate 2');assert.throws(()=>e.accept(r.id,'a','v'),/older candidate/);
 });
 test('Playwright MCP accepts only registered step order/arguments and binds actual receipts',t=>{
- const {e,r,root}=setup(t),file=path.join(root,'apps/orders.js');
  const mcp={id:'pw',type:'mcp',mcpId:'playwright',steps:[{tool:'browser_navigate',args:{url:'http://localhost:3000/'},expectedPattern:'page ready'},{tool:'browser_run_code',args:{code:'async page => ({harnessPass:"suite-v1"})'},expectedPattern:'"harnessPass":"suite-v1"'}]};
- e.config.browserOrigins=['http://localhost:3000'];e.config.checks.push(mcp);e.validateConfig();
+ const {e,r,root}=setup(t,c=>{c.browserOrigins=['http://localhost:3000'];c.checks.push(mcp)}),file=path.join(root,'apps/orders.js');
  plan(e,r,'b','builder',{writeFiles:[file],checks:['pw']});const b=dispatch(e,r,'b');e.write('child-'+b.attempt,file,'app');assert.throws(()=>e.check('child-'+b.attempt,'pw'),/independent/);e.finish(b.attempt,'implemented');const ev=e.evidence(r.id,{file,start:1,end:1});
  plan(e,r,'v','verifier',{target:'b'});const v=dispatch(e,r,'v',[ev.id]),session='child-'+v.attempt;const steps=e.check(session,'pw').steps;
  assert.throws(()=>e.mcpBefore(session,steps[1].tool,steps[1].args),/registered acceptance/);
@@ -84,6 +84,6 @@ test('Playwright MCP accepts only registered step order/arguments and binds actu
  e.finish(v.attempt,JSON.stringify({verdict:'pass',acceptance:{0:true},evidenceIds:[ev.id]}));e.accept(r.id,'v');e.accept(r.id,'b','v');assert.equal(e.status(r.id).tasks.b.checksRun.pw.pass,true);
 });
 test('a failed MCP output cannot be replaced by a passing model verdict',t=>{
- const {e,r,root}=setup(t),file=path.join(root,'app.js');e.config.checks.push({id:'pw',type:'mcp',mcpId:'playwright',steps:[{tool:'browser_run_code',args:{code:'suite'},expectedPattern:'PASS'}]});
+ const {e,r,root}=setup(t,c=>c.checks.push({id:'pw',type:'mcp',mcpId:'playwright',steps:[{tool:'browser_run_code',args:{code:'suite'},expectedPattern:'PASS'}]})),file=path.join(root,'app.js');
  plan(e,r,'b','builder',{writeFiles:[file],checks:['pw']});const b=dispatch(e,r,'b');e.write('child-'+b.attempt,file,'app');e.finish(b.attempt,'candidate');const ev=e.evidence(r.id,{file,start:1,end:1});plan(e,r,'v','verifier',{target:'b'});const v=dispatch(e,r,'v',[ev.id]),session='child-'+v.attempt;e.check(session,'pw');e.mcpAfter(session,'playwright_browser_run_code',{code:'suite'},{output:'FAIL'});e.finish(v.attempt,JSON.stringify({verdict:'pass',acceptance:{0:true},evidenceIds:[ev.id]}));e.accept(r.id,'v');assert.throws(()=>e.accept(r.id,'b','v'),/check failed\/missing/);
 });

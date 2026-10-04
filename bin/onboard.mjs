@@ -5,6 +5,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {spawnSync} from 'node:child_process';
 import {defaults} from '../src/defaults.mjs';
+import {discoverRepositories} from '../src/projects.mjs';
 const root=fs.realpathSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..'));
 const cmd=process.argv[2]||'probe';
 const output=x=>console.log(JSON.stringify(x,null,2));
@@ -42,6 +43,7 @@ async function main() {
   output({models:ids.slice(0,500),truncated:ids.length>500});return;
  }
  if(cmd==='example'){output(defaults(root));return}
+ if(cmd==='projects'){output(discoverRepositories(root));return}
  if(cmd==='install') {
   if(ready){output({installed:true,changed:false});return}
   const p=pnpmEntry();
@@ -58,10 +60,9 @@ async function main() {
   const config=JSON.parse(fs.readFileSync(file,'utf8'));
   const {Engine}=await import('../src/engine.mjs');
   const {init}=await import('../src/init.mjs');
-  const temp=fs.mkdtempSync(path.join(root,'.th-onboard-'));
-  try{fs.mkdirSync(path.join(temp,'.team-harness'));fs.writeFileSync(path.join(temp,'.team-harness/config.json'),JSON.stringify(config));new Engine(temp)}finally{fs.rmSync(temp,{recursive:true,force:true})}
-  output({...init(root,config),restartRequired:true,next:'退出并重新打开 opencode，再输入 /workspace。'});return;
+  new Engine(root,{config});
+  output({...init(root,config),restartRequired:true,next:'退出并重新打开 opencode，与 Jarvis 说继续或描述业务任务。'});return;
  }
- throw Error('支持 probe | models | example | install | apply');
+ throw Error('支持 probe | models | projects | example | install | apply');
 }
 main().catch(err=>{console.error('Onboard:',err.message);process.exitCode=1});

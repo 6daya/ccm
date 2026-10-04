@@ -16,3 +16,6 @@ test('non-bootstrap project profile is never silently ignored',t=>{
  const dir=workspace(t);fs.mkdirSync(path.join(dir,'.opencode'));fs.writeFileSync(path.join(dir,'.opencode/opencode.jsonc'),'{"default_agent":"jarvis","autoupdate":false,"share":"disabled","model":"company/special"}');
  fs.writeFileSync(path.join(dir,'opencode.jsonc'),'{}');assert.throws(()=>init(dir,defaults(dir,'company/free')),/Multiple/);assert.equal(fs.existsSync(path.join(dir,'.team-harness')),false);
 });
+test('official schema annotation does not turn the Jarvis bootstrap into an ambiguous profile',t=>{
+ const dir=workspace(t);fs.mkdirSync(path.join(dir,'.opencode'));fs.writeFileSync(path.join(dir,'.opencode/opencode.jsonc'),'{"$schema":"https://opencode.ai/config.json","default_agent":"jarvis","autoupdate":false,"share":"disabled"}');fs.writeFileSync(path.join(dir,'opencode.jsonc'),'{}');assert.equal(init(dir,defaults(dir,'company/free')).configFile,path.join(dir,'opencode.jsonc'));
+});

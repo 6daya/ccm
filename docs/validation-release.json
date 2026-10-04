@@ -1,0 +1,92 @@
+{
+  "version": "0.2.0",
+  "date": "2026-10-04",
+  "platform": "darwin",
+  "arch": "arm64",
+  "tests": {
+    "total": 39,
+    "passed": 39,
+    "failed": 0,
+    "output": "validation-tests.txt"
+  },
+  "bootstrap": {
+    "ok": true,
+    "date": "2026-10-04",
+    "opencode": "1.18.34",
+    "kind": "real-opencode-workspace-bootstrap-smoke",
+    "notRealLLM": true,
+    "nativeDependencyCacheReused": true,
+    "harnessDependenciesAbsentBeforeOnboarding": true,
+    "defaultAgent": "jarvis",
+    "relativeProjectDiscovery": true,
+    "providerReferencePreserved": true,
+    "projectRegistrationRequiresApproval": true,
+    "businessShellAndConfigEditDenied": true,
+    "restartRequired": true,
+    "promptRegistrationConsistent": true,
+    "initializedSlashRegistrationConsistent": true
+  },
+  "priorIntegrationEvidenceAudit": {
+    "ok": true,
+    "notRealLLM": true,
+    "requestCount": 72,
+    "requestsByRole": {
+      "coordinator": 51,
+      "scout": 4,
+      "verifier": 11,
+      "builder": 5,
+      "expert": 1
+    },
+    "commandsMatch": true,
+    "screenshotSha256": "7314e08459c53e73d00c0eced829dce4e5cd0d555e74478020c19beedafa6039",
+    "allRunsAccepted": true,
+    "changedCodeSinceIntegration": [
+      "src/plugin.mjs",
+      "src/prompts.mjs",
+      "eval/diagnose-startup.mjs"
+    ],
+    "finalFullIntegrationRerun": false
+  },
+  "coldStartup": "validation-cold-start.json",
+  "companyPilot": {
+    "status": "not-run",
+    "qualityConclusion": null,
+    "billingConclusion": null,
+    "internalMcpRealVerification": false
+  },
+  "sourceSha256": {
+    "src/defaults.mjs": "4771fd65a46eaad84d6aec54f0f676db2b11dd61d229666ff13836665b894e07",
+    "src/engine.mjs": "9151d9515ed175f2f0c776c8873480ad9e9a4d93f0d233495764300c83928212",
+    "src/init.mjs": "5692ec37017e1df02c447ec679ee9a7ec3fbf20b888998db7c6d6344c5090642",
+    "src/plugin.mjs": "a7012d2c0531dbdc5bb2007e20124cd2d3ddfe4cce32ce322d4bd3cb0c48c5ef",
+    "src/projects.mjs": "543416621a7513387e57ad4b0f8752c4afc6f4c47d51719d750b89ad9c8657ae",
+    "src/prompts.mjs": "895d6bc61609c154de21877be92685479282f3e0fa36d030b1acbfe070e4ed1b",
+    "src/workspace.mjs": "f424b6d3db0017635e8790726465e9ef70a09ab1b35fc862203cf3043460aeaa",
+    "bin/cli.mjs": "1edc9444616468862f1bf1f48f79323c213d6461db1ffb4fc437663610436ffb",
+    "bin/onboard.mjs": "8c58091291c5c58c22cb568de5824deb4f68832e47b60633ea16e9ca670b07ee",
+    "eval/case-server.mjs": "d92fc93c2e48e37b2e2e84ecce48ae592454a2705a829cdd22b89fc9dbe9f0e8",
+    "eval/diagnose-startup.mjs": "620c78bae11acc498037a780c4fe353c3503a3dd2c39a030a460c121040449f5",
+    "eval/fixtures.mjs": "520b6ca183b07d5a5f433da6266bde1ef668097bc8f6190dafa0303b1eb7dd72",
+    "eval/gateway.mjs": "14b12fcfbd0dd61528ebeef9e85ac3a121aca72bae1220b78ff136f8798af61f",
+    "eval/mcp-fixture.mjs": "e50a451d9a937cfb1441260f7f103de1e9abb19b8ff3eca586e98977c25f94c6",
+    "eval/run.mjs": "83fddb22828173c6bb129ad5b96679ce7eb6c8c6b72a81b1c49c11ced74708fe",
+    "tests/engine.test.mjs": "831f1dbd140fee69e7c1b7be9960cdf41fcd9591f96405166a04f8f5d99939af",
+    "tests/init.test.mjs": "b62676ee48f84bb0675d369f53fbd93a9d0ed6a36568bf016f153ad47adf779f",
+    "tests/onboard.test.mjs": "ead4e175e37e7eb9551b570523221e54ccde4a9b6e9a2ad25f9089d3565cab89",
+    "tests/projects.test.mjs": "26bdf3f0e76052863621bfa61f64f11375faa993180425fd26e161a7e4bf7094",
+    ".opencode/agents/jarvis.md": "3d8e008a7cdab80434a98492e8d6697453c3704d453e362a22cc9818dedd7cce",
+    ".opencode/commands/onboard.md": "8d9ab5b64f68854edbc08803034d16f6ae03cfd6d1f43a22495b6e60a96bc833",
+    ".opencode/commands/workspace.md": "c32de123319e4db97444114d3f7b92ffdb238ac48e23fda7348fcddefbf4606f",
+    ".opencode/opencode.jsonc": "7d7358bc23a7c156b2971ae4da9ec48e23e43c413e8238f208ba25bb4fd57f38",
+    "package.json": "c06d0775ad91b7b8dc131b5301ef30d085a328d3af8ed93d9453b2ebcdf8a330",
+    "pnpm-lock.yaml": "9e7041a3759d5fde7df831c2f586a90c127163d9560f7c593506664767f12b96",
+    "AGENTS.md": "075ba4d4c0c69928877918872d463e5cba122d8100d5582684e36498b9fa606a",
+    "workspace/README.md": "f2668c5f0f5fddb683968705c9052fa28154fde5f4a40676a8bdc39f59154f0d"
+  },
+  "diagnosticScriptChecks": {
+    "syntaxPassed": true,
+    "missingBinaryFailsBeforeListening": true,
+    "windowsExplicitlyUnsupported": true,
+    "normalFlowEvidence": "validation-cold-start.json"
+  }
+}

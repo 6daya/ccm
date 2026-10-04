@@ -1,0 +1,82 @@
+{
+  "date": "2026-10-04T14:55:49.475Z",
+  "opencode": "1.18.34",
+  "notRealLLM": true,
+  "harnessLoaded": false,
+  "providerCredentialsCopied": false,
+  "timeoutMs": 45000,
+  "registryChanged": false,
+  "runs": [
+    {
+      "label": "native-only",
+      "argv": [
+        "run",
+        "--print-logs",
+        "--log-level",
+        "DEBUG",
+        "--format",
+        "json",
+        "--dir",
+        "$DIAGNOSTIC/native-only",
+        "Reply with diagnostic fixture."
+      ],
+      "exit": 0,
+      "signal": null,
+      "ms": 2315,
+      "timedOut": false,
+      "modelRequests": 2,
+      "configDependencies": false,
+      "projectDependencies": false,
+      "lastLogLines": [
+        "timestamp=2026-10-04T14:55:51.977Z level=INFO run=17545e00 message=\"watcher backend\" directory=$DIAGNOSTIC/native-only platform=darwin backend=fs-events",
+        "timestamp=2026-10-04T14:55:51.998Z level=INFO run=17545e00 message=\"booting location services\" directory=$DIAGNOSTIC/native-only workspaceID=undefined",
+        "timestamp=2026-10-04T14:55:52.000Z level=INFO run=17545e00 message=\"project copy refresh started\" projectID=global",
+        "timestamp=2026-10-04T14:55:52.002Z level=INFO run=17545e00 message=\"project copy refresh done\" projectID=global updated=[] removed=[]",
+        "timestamp=2026-10-04T14:55:52.147Z level=INFO run=17545e00 message=process session.id=ses_ef895fd99ffeW6z4b1456dBa1x messageID=msg_1076a03550012RWirp1RN0xx3s",
+        "timestamp=2026-10-04T14:55:52.147Z level=INFO run=17545e00 message=stream providerID=diagnostic modelID=free session.id=ses_ef895fd99ffeW6z4b1456dBa1x small=false agent=build mode=primary",
+        "timestamp=2026-10-04T14:55:52.148Z level=INFO run=17545e00 message=\"llm runtime selected\" llm.runtime=ai-sdk llm.provider=diagnostic llm.model=free",
+        "timestamp=2026-10-04T14:55:52.161Z level=INFO run=17545e00 message=loop session.id=ses_ef895fd99ffeW6z4b1456dBa1x step=1",
+        "timestamp=2026-10-04T14:55:52.162Z level=INFO run=17545e00 message=\"exiting loop\" session.id=ses_ef895fd99ffeW6z4b1456dBa1x",
+        "timestamp=2026-10-04T14:55:52.164Z level=INFO run=17545e00 message=\"disposing instance\" directory=$DIAGNOSTIC/native-only"
+      ]
+    },
+    {
+      "label": "native-local-plugin",
+      "argv": [
+        "run",
+        "--print-logs",
+        "--log-level",
+        "DEBUG",
+        "--format",
+        "json",
+        "--dir",
+        "$DIAGNOSTIC/native-local-plugin",
+        "Reply with diagnostic fixture."
+      ],
+      "exit": null,
+      "signal": "SIGTERM",
+      "ms": 45021,
+      "timedOut": true,
+      "modelRequests": 0,
+      "configDependencies": false,
+      "projectDependencies": false,
+      "lastLogLines": [
+        "timestamp=2026-10-04T14:55:52.695Z level=INFO run=0782dcee message=loading path=$DIAGNOSTIC/native-local-plugin-isolated/config/opencode/opencode.jsonc",
+        "timestamp=2026-10-04T14:55:52.697Z level=INFO run=0782dcee message=loading path=$DIAGNOSTIC/native-local-plugin/opencode.json",
+        "timestamp=2026-10-04T14:55:52.768Z level=DEBUG run=0782dcee message=\"loading config from $DIAGNOSTIC/native-local-plugin/.opencode/opencode.json\"",
+        "timestamp=2026-10-04T14:55:52.768Z level=INFO run=0782dcee message=loading path=$DIAGNOSTIC/native-local-plugin/.opencode/opencode.json",
+        "timestamp=2026-10-04T14:55:52.769Z level=DEBUG run=0782dcee message=\"loading config from $DIAGNOSTIC/native-local-plugin/.opencode/opencode.jsonc\"",
+        "timestamp=2026-10-04T14:55:52.769Z level=INFO run=0782dcee message=loading path=$DIAGNOSTIC/native-local-plugin/.opencode/opencode.jsonc",
+        "timestamp=2026-10-04T14:55:52.776Z level=DEBUG run=0782dcee message=\"loading config from $USER_OPENCODE_HOME/opencode.json\"",
+        "timestamp=2026-10-04T14:55:52.776Z level=INFO run=0782dcee message=loading path=$USER_OPENCODE_HOME/opencode.json",
+        "timestamp=2026-10-04T14:55:52.776Z level=DEBUG run=0782dcee message=\"loading config from $USER_OPENCODE_HOME/opencode.jsonc\"",
+        "timestamp=2026-10-04T14:55:52.776Z level=INFO run=0782dcee message=loading path=$USER_OPENCODE_HOME/opencode.jsonc"
+      ]
+    }
+  ],
+  "registry": {
+    "pnpmReference": "https://registry.npmjs.org/",
+    "scope": "pnpm reference only; OpenCode npm loader uses each config directory as cwd",
+    "exit": 0
+  }
+}

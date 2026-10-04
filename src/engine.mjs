@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import {spawnSync} from 'node:child_process';
+import {normalizeConfig,projectList,projectChecks,validateProjects,repositoryContext,discoverRepositories,gitView} from './projects.mjs';
 const canonical=x=>JSON.stringify(x,(_k,v)=>v&&typeof v==='object'&&!Array.isArray(v)?Object.fromEntries(Object.entries(v).sort(([a],[b])=>a.localeCompare(b))):v);
 export const hash = x => crypto.createHash('sha256').update(x).digest('hex');
 const fail = message => {throw new Error(message)};
@@ -10,17 +11,19 @@ const now = () => new Date().toISOString();
 const terminal = ['accepted','failed','cancelled'];
 const inside = (p,root) => p===root || p.startsWith(root+path.sep);
 export class Engine {
-  constructor(directory) {
+  constructor(directory,{config}={}) {
     this.directory=fs.realpathSync(directory);
     this.dir=path.join(this.directory,'.team-harness');
-    this.config=JSON.parse(fs.readFileSync(path.join(this.dir,'config.json'),'utf8'));
+    this.config=normalizeConfig(this.directory,config||JSON.parse(fs.readFileSync(path.join(this.dir,'config.json'),'utf8')));
     this.validateConfig();
-    fs.mkdirSync(path.join(this.dir,'receipts'),{recursive:true});
+    if(!config)fs.mkdirSync(path.join(this.dir,'receipts'),{recursive:true});
     this.stateFile=path.join(this.dir,'state.json');
     this.lock=path.join(this.dir,'state.lock');
   }
   validateConfig() {
     const c=this.config;
+    let ccm=false;try{ccm=JSON.parse(fs.readFileSync(path.join(this.directory,'package.json'),'utf8')).name==='ccm'}catch{}
+    if(ccm)need(c.layout==='ccm-workspace','CCM root requires the ccm-workspace layout; do not grant business access to harness sources');
     need(c.version===1,'Unsupported configuration version');
     need(c.models?.free?.id && c.models.free.free===true,'Free model must be explicitly attested free');
     for(const [tier,m] of Object.entries(c.models)) {
@@ -31,6 +34,7 @@ export class Engine {
     need(c.limits?.maxAttempts>=1&&c.limits.maxNodes>=1&&c.limits.freeConcurrency>=1&&c.limits.paidConcurrency>=1,'Invalid task limits');
     need(c.budget.runUsd>=0&&c.budget.monthUsd>=0,'Invalid budget');
     need(Array.isArray(c.checks),'Checks array required');
+    need(new Set(c.checks.map(x=>x.id)).size===c.checks.length,'Check IDs must be unique');
     for(const check of c.checks){
       need(/^[\w-]+$/.test(check.id),'Invalid check ID');
       if(check.type==='mcp'){
@@ -40,6 +44,55 @@ export class Engine {
     }
     need((c.requiredBuilderChecks||[]).every(id=>c.checks.some(check=>check.id===id)),'Mandatory checks must be configured');
     need((c.protectedWriteRoots||[]).every(r=>path.isAbsolute(r)),'Protected module roots must be absolute');
+    validateProjects(c,this.directory);
+  }
+  projects() {return projectList(this.config)}
+  scope(run) {return run.scope||{roots:this.config.roots,checkIds:this.config.checks.map(x=>x.id),requiredBuilderChecks:this.config.requiredBuilderChecks||[]}}
+  assertRunConfig(run) {
+    for(const [id,digest] of Object.entries(run.scope?.checkDigests||{})){const check=this.config.checks.find(c=>c.id===id);need(check&&hash(canonical(check))===digest,'Registered check changed during this run: '+id+'; restore its rules or start a new run')}
+  }
+  selected(session,projectID) {
+    const active=Object.values(this.read().runs).find(r=>r.session===session&&r.status==='active');
+    if(active){need(!projectID||projectID===active.project,'Finish/cancel the active run before switching projects');return {id:active.project||'default',...this.scope(active)}}
+    const id=projectID||this.read().sessionProjects?.[session]||(this.projects().length===1?this.projects()[0].id:null);
+    return this.projects().find(p=>p.id===id)||fail('Select a project; clarify which repositories the user intends');
+  }
+  selectProject(session,id) {
+    const p=this.selected(session,id);
+    return this.transaction(s=>{s.sessionProjects??={};s.sessionProjects[session]=p.id;return {project:p.id,roots:p.roots,configurationChanged:false,selectionPersisted:true}});
+  }
+  context(session,{project,files=[]}={}) {
+    const p=this.selected(session,project),run=Object.values(this.read().runs).find(r=>r.session===session&&r.status==='active');
+    return repositoryContext(this,p,{files,runID:run?.id});
+  }
+  discover() {return discoverRepositories(this.directory)}
+  repository(runID,args) {return gitView(this,runID,args)}
+  registerProject({id,name,roots,checks=[],checkIds=[],requiredBuilderChecks=[],protectedWriteRoots=[]}) {
+    need(this.config.layout==='ccm-workspace','Project registration requires the CCM/workspace layout');
+    need(!this.projects().some(p=>p.id===id),'Project already exists; existing rules are not overwritten');
+    need(Array.isArray(roots)&&roots.length>0,'Repository paths required');
+    need(!Object.values(this.read().runs).some(r=>r.status==='active'),'Finish/cancel active runs before registering project rules');
+    for(const check of checks)need(check.type!=='mcp'&&!this.config.checks.some(c=>c.id===check.id),'Only new command checks may be registered; existing checks and MCP permissions are immutable');
+    const resolved=roots.map(root=>path.resolve(this.directory,root));
+    const inherited=this.projects().filter(p=>p.roots.some(root=>resolved.some(next=>inside(root,next)||inside(next,root)))).flatMap(p=>p.requiredBuilderChecks||[]).filter(id=>{
+      const check=this.config.checks.find(c=>c.id===id);return check&&(check.type==='mcp'||resolved.some(root=>inside(check.cwd,root)));
+    });
+    requiredBuilderChecks=[...new Set([...requiredBuilderChecks,...inherited])];checkIds=[...new Set([...checkIds,...inherited])];
+    const file=path.join(this.dir,'config.json'),raw=JSON.parse(fs.readFileSync(file,'utf8'));
+    raw.projects.push({id,name:name||id,roots,checkIds:[...new Set([...checkIds,...checks.map(x=>x.id)])],requiredBuilderChecks});
+    raw.roots=[...new Set([...(raw.roots||[]),...raw.projects.flatMap(p=>p.roots)])];raw.checks.push(...checks);raw.protectedWriteRoots=[...new Set([...(raw.protectedWriteRoots||[]),...protectedWriteRoots])];
+    const normalized=normalizeConfig(this.directory,raw);
+    new Engine(this.directory,{config:raw});
+    return this.transaction(s=>{
+      need(!Object.values(s.runs).some(r=>r.status==='active'),'Finish/cancel active runs before registering project rules');
+      const disk=normalizeConfig(this.directory,JSON.parse(fs.readFileSync(file,'utf8')));
+      need(canonical(disk)===canonical(this.config),'Configuration changed externally; restart before applying');
+      fs.mkdirSync(path.join(this.dir,'backups'),{recursive:true});
+      fs.copyFileSync(file,path.join(this.dir,'backups','config.before-project-'+crypto.randomUUID()+'.json'));
+      const tmp=file+'.'+crypto.randomUUID();fs.writeFileSync(tmp,JSON.stringify(raw,null,2)+'\n',{mode:0o600});fs.renameSync(tmp,file);
+      Object.assign(this.config,normalized);
+      return {project:id,roots:this.projects().find(p=>p.id===id).roots,registeredChecks:checks.map(x=>x.id),inheritedMandatoryChecks:[...new Set(inherited)],requiredBuilderChecks,restartRequired:false,analysisOnly:!raw.projects.at(-1).checkIds.length};
+    });
   }
   read() {return fs.existsSync(this.stateFile)?JSON.parse(fs.readFileSync(this.stateFile,'utf8')):{version:1,runs:{},usage:{},reconciliations:[]};}
   transaction(fn) {
@@ -59,10 +112,12 @@ export class Engine {
   run(s,id) {return s.runs[id] || fail('Unknown run: '+id)}
   task(s,r,id) {return this.run(s,r).tasks[id] || fail('Unknown task: '+id)}
   log(run,type,detail) {run.events.push({at:now(),type,...detail})}
-  safePath(file,write=false) {
+  safePath(file,write=false,runID) {
     need(path.isAbsolute(file),'Use an absolute path');
     const p=path.resolve(file);
     need(this.config.roots.some(r=>inside(p,fs.realpathSync(r))),'Path is outside configured repositories');
+    if(runID)need(this.scope(this.status(runID)).roots.some(root=>inside(p,root)),'Path is outside the active project');
+    if(this.config.layout==='ccm-workspace')need(inside(p,path.join(this.directory,'workspace')),'CCM implementation is protected from business tasks');
     need(!p.split(path.sep).some(x=>['.team-harness','.opencode','.git'].includes(x)),'Runtime/configuration paths are protected');
     let ancestor=p;while(!fs.existsSync(ancestor)) ancestor=path.dirname(ancestor);
     const actual=path.join(fs.realpathSync(ancestor),path.relative(ancestor,p));
@@ -70,9 +125,10 @@ export class Engine {
     if(!write) need(fs.statSync(p).isFile(),'Expected an existing regular file');
     return p;
   }
-  search({root,pattern='',glob,mode='text',maxResults=40}) {
+  search({root,pattern='',glob,mode='text',maxResults=40},runID) {
     const canonical=fs.realpathSync(root);
     need(this.config.roots.some(r=>inside(canonical,fs.realpathSync(r))),'Search outside repository roots');
+    if(runID)need(this.scope(this.status(runID)).roots.some(root=>inside(canonical,root)),'Search outside the active project');
     need(!canonical.split(path.sep).some(p=>['.git','.opencode','.team-harness','node_modules'].includes(p)),'Protected search root');
     need(typeof pattern==='string'&&pattern.length<=300&&Number.isInteger(maxResults)&&maxResults>=1&&maxResults<=80,'Invalid bounded search');
     need(['files','text'].includes(mode),'Search mode must be files or text');
@@ -86,18 +142,20 @@ export class Engine {
     const lines=out.stdout.trim().split('\n').filter(Boolean);
     return {root:canonical,mode,results:lines.slice(0,maxResults),truncated:lines.length>maxResults,next:'Read relevant source excerpts via harness_read; search hits are not verification evidence.'};
   }
-  start(session,goal) {
+  start(session,goal,projectID) {
     need(goal.trim().length>0,'A goal is required');
     return this.transaction(s=>{
       const existing=Object.values(s.runs).find(r=>r.session===session&&!['accepted','cancelled'].includes(r.status));
-      if(existing)return existing;
-      const r={id:crypto.randomUUID(),session,goal,status:'active',created:now(),tasks:{},evidence:{},events:[]};
+      if(existing){need(!projectID||projectID===existing.project,'Active run is bound to another project');return existing}
+      const project=this.selected(session,projectID),checks=projectChecks(this.config,project);
+      const r={id:crypto.randomUUID(),session,goal,project:project.id,scope:{roots:[...project.roots],checkIds:checks.map(x=>x.id),checkDigests:Object.fromEntries(checks.map(check=>[check.id,hash(canonical(check))])),requiredBuilderChecks:[...new Set([...(this.config.requiredBuilderChecks||[]),...(project.requiredBuilderChecks||[])])]},status:'active',created:now(),tasks:{},evidence:{},events:[]};
       s.runs[r.id]=r;this.log(r,'started',{});return r;
     });
   }
   plan(runID,definition) {
     return this.transaction(s=>{
       const r=this.run(s,runID);need(r.status==='active','Run is not active');
+      this.assertRunConfig(r);
       const d=definition;
       need(/^[a-zA-Z0-9_-]{1,64}$/.test(d.id),'Invalid task ID');need(!r.tasks[d.id],'Task contract is immutable; retry or create a new ID');
       need(Object.keys(r.tasks).length<this.config.limits.maxNodes,'Node limit reached');
@@ -105,11 +163,12 @@ export class Engine {
       need(typeof d.goal==='string'&&d.goal.trim(),'Task goal required');
       need(Array.isArray(d.acceptance)&&d.acceptance.length>0&&d.acceptance.every(a=>typeof a==='string'&&a.trim()),'Acceptance criteria required');
       need(Array.isArray(d.dependencies)&&d.dependencies.every(id=>r.tasks[id]),'Unknown dependencies');
-      need(Array.isArray(d.writeFiles)&&d.writeFiles.every(f=>this.safePath(f,true)),'Explicit writeFiles required');
+      need(Array.isArray(d.writeFiles)&&d.writeFiles.every(f=>this.safePath(f,true,runID)),'Explicit writeFiles required');
       for(const f of d.writeFiles)need(!(this.config.protectedWriteRoots||[]).some(root=>inside(f,path.resolve(root))),'Write contract touches a user-protected module');
-      if(d.role==='builder')need((this.config.requiredBuilderChecks||[]).every(id=>d.checks.includes(id)),'Builder contract omits a mandatory project check');
+      if(d.role==='builder')need(this.scope(r).requiredBuilderChecks.every(id=>d.checks.includes(id)),'Builder contract omits a mandatory project check');
       need(d.role==='builder'||d.writeFiles.length===0,'Only builders may write');
       need(Array.isArray(d.checks)&&d.checks.every(id=>this.config.checks.some(c=>c.id===id)),'Unknown check');
+      need(d.checks.every(id=>this.scope(r).checkIds.includes(id)),'Check belongs to another project');
       if(d.role==='builder')need(d.writeFiles.length>0&&d.checks.length>0,'Builders require file scopes and executable acceptance checks');
       if(d.role==='verifier')need(d.target&&r.tasks[d.target]&&r.tasks[d.target].role!=='verifier','Verifier requires a candidate target');
       const t={...d,tier:d.role==='expert'?'expert':'free',status:'queued',attempts:[],created:now(),result:null,checksRun:{}};
@@ -120,7 +179,7 @@ export class Engine {
     need(Number.isInteger(start)&&Number.isInteger(end)&&start>=1&&end>=start&&end-start<200,'Evidence is at most 200 lines');
     let entry;
     if(file) {
-      const p=this.safePath(file),raw=fs.readFileSync(p,'utf8');need(raw.length<=2e6,'File too large; narrow source');
+      const p=this.safePath(file,false,runID),raw=fs.readFileSync(p,'utf8');need(raw.length<=2e6,'File too large; narrow source');
       entry={kind:'file',file:p,start,end,excerpt:raw.split('\n').slice(start-1,end).join('\n'),digest:hash(raw),at:now()};
     }else {
       need(typeof uri==='string'&&this.config.mcpIds.some(id=>uri.startsWith('mcp://'+id+'/')),'MCP evidence must identify an allowed internal connector');
@@ -134,6 +193,7 @@ export class Engine {
   prepare(runID,taskID,evidenceIDs=[],reason='') {
     return this.transaction(s=>{
       const r=this.run(s,runID),t=this.task(s,runID,taskID),c=this.config;
+      this.assertRunConfig(r);
       need(r.status==='active','Run is not active');need(t.status==='queued','Task is not queued');
       need(Date.now()-Date.parse(r.created)<c.limits.runMinutes*60000,'Run time limit reached; create a new run');
       need(t.dependencies.every(id=>r.tasks[id].status==='accepted'),'Dependencies must be accepted');
@@ -145,7 +205,9 @@ export class Engine {
         need(packet.length>0&&reason.trim().length>=12,'Paid escalation requires evidence and a concrete reason');
         need(['boundary','semantic-failure','source-conflict','design-failure','user-request'].some(x=>reason.startsWith(x+':')),'Unsupported escalation reason');
       }
-      const prompt=JSON.stringify({harness:{run:runID,task:taskID,role:t.role,attempt:t.attempts.length+1},goal:t.goal,acceptance:t.acceptance,writeFiles:t.writeFiles,checks:t.checks,evidence:packet,target:t.target?{id:t.target,attempt:r.tasks[t.target].attempts.at(-1)?.id,result:r.tasks[t.target].role==='builder'?undefined:r.tasks[t.target].result?.slice(0,12000),changed:r.tasks[t.target].changed||[],checkIds:r.tasks[t.target].checks,checks:r.tasks[t.target].checksRun}:undefined});
+      const context=t.role==='expert'?{project:r.project,roots:this.scope(r).roots}:repositoryContext(this,{id:r.project,...this.scope(r)},{runID,files:t.writeFiles.length?t.writeFiles:(t.target?r.tasks[t.target].writeFiles:[])});
+      const contextDigests=Object.fromEntries((context.repositories||[]).flatMap(repo=>repo.rules).map(rule=>[rule.file,rule.digest]));
+      const prompt=JSON.stringify({harness:{run:runID,task:taskID,role:t.role,attempt:t.attempts.length+1,project:r.project},context,goal:t.goal,acceptance:t.acceptance,writeFiles:t.writeFiles,checks:t.checks,evidence:packet,target:t.target?{id:t.target,attempt:r.tasks[t.target].attempts.at(-1)?.id,result:r.tasks[t.target].role==='builder'?undefined:r.tasks[t.target].result?.slice(0,12000),changed:r.tasks[t.target].changed||[],checkIds:r.tasks[t.target].checks,checks:r.tasks[t.target].checksRun}:undefined});
       need(prompt.length<=c.limits.maxPacketChars,'Evidence packet too large; select narrower excerpts');
       const reserve=t.tier==='free'?0:(c.limits.maxPacketChars+c.limits.systemReserveTokens)*model.price.input/1e6+c.limits.expertOutputTokens*model.price.output/1e6;
       const outstanding=Object.values(s.runs).flatMap(x=>Object.values(x.tasks)).flatMap(x=>x.attempts).filter(a=>!a.settled);
@@ -157,7 +219,7 @@ export class Engine {
       need(runSpent+outstanding.filter(a=>a.run===runID).reduce((v,a)=>v+a.reserve,0)+reserve<=c.budget.runUsd,'Run budget reservation exceeded');
       need(monthSpent+outstanding.reduce((v,a)=>v+a.reserve,0)+reserve<=c.budget.monthUsd,'Monthly budget reservation exceeded');
       if(t.tier!=='free')need(Object.values(r.tasks).filter(x=>x.tier!=='free'&&x.attempts.length).length<c.limits.maxPaidNodes||t.attempts.length,'Paid node limit reached');
-      const a={id:crypto.randomUUID(),run:runID,task:taskID,tier:t.tier,model:model.id,status:'prepared',reserve,settled:false,at:now(),promptHash:hash(prompt),evidenceIDs,reason,base:Object.fromEntries(t.writeFiles.map(f=>[f,fs.existsSync(f)?hash(fs.readFileSync(f)):null]))};
+      const a={id:crypto.randomUUID(),run:runID,task:taskID,tier:t.tier,model:model.id,status:'prepared',reserve,settled:false,at:now(),promptHash:hash(prompt),contextDigests,evidenceIDs,reason,base:Object.fromEntries(t.writeFiles.map(f=>[f,fs.existsSync(f)?hash(fs.readFileSync(f)):null]))};
       if(t.role==='verifier')a.targetAttempt=r.tasks[t.target].attempts.at(-1)?.id;
       t.attempts.push(a);t.status='prepared';this.log(r,'prepared',{task:taskID,attempt:a.id,tier:t.tier,reserve});
       return {run:runID,task:taskID,attempt:a.id,args:{description:'TH:'+a.id,prompt,subagent_type:'th-'+t.role,background:false}};
@@ -168,8 +230,10 @@ export class Engine {
     return this.transaction(s=>{
       const id=/^TH:([\w-]+)$/.exec(args.description||'')?.[1],x=this.locate(s,id);need(x,'Use harness_prepare before task');
       const {r,t,a}=x;need(r.session===parent,'Only the owning main session may dispatch');
+      this.assertRunConfig(r);
       need(r.status==='active'&&t.status==='prepared'&&a.status==='prepared','Duplicate, cancelled, or invalid dispatch');
       need(!args.task_id&&args.background!==true&&args.subagent_type==='th-'+t.role&&hash(args.prompt)===a.promptHash,'Task arguments do not match the immutable contract');
+      for(const [file,digest] of Object.entries(a.contextDigests||{}))need(fs.existsSync(file)&&hash(fs.readFileSync(file))===digest,'Project rules changed; re-prepare the task');
       const active=Object.values(s.runs).flatMap(x=>Object.values(x.tasks)).flatMap(x=>x.attempts).filter(x=>x.status==='running');
       need(active.filter(x=>x.tier===a.tier).length<(a.tier==='free'?this.config.limits.freeConcurrency:this.config.limits.paidConcurrency),'Concurrency limit reached at dispatch');
       for(const x of active){const other=this.locate(s,x.id);need(!t.writeFiles.some(f=>other.t.writeFiles.includes(f)),'Concurrent write conflict')}
@@ -202,15 +266,18 @@ export class Engine {
     });
   }
   write(session,file,content) {
-    const p=this.safePath(file,true);need(typeof content==='string'&&Buffer.byteLength(content)<1e6,'Write limited to 1MB');
+    const live=this.locate(this.read(),session),p=this.safePath(file,true,live?.r.id);need(typeof content==='string'&&Buffer.byteLength(content)<1e6,'Write limited to 1MB');
     return this.transaction(s=>{const x=this.locate(s,session);need(x&&x.a.status==='running'&&x.r.status==='active'&&x.t.role==='builder','Only an active builder can write');
+      this.assertRunConfig(x.r);
       need(x.t.writeFiles.includes(p),'Write outside approved module/file scope');
+      for(const [file,digest] of Object.entries(x.a.contextDigests||{}))need(fs.existsSync(file)&&hash(fs.readFileSync(file))===digest,'Project rules changed during task; preserve files and re-plan');
       const expected=x.a.base[p],actual=fs.existsSync(p)?hash(fs.readFileSync(p)):null;need(actual===expected,'File changed externally; preserve user edits and re-plan');
       fs.mkdirSync(path.dirname(p),{recursive:true});fs.writeFileSync(p,content);x.a.base[p]=hash(fs.readFileSync(p));x.t.changed=[...new Set([...(x.t.changed||[]),p])];this.log(x.r,'write',{task:x.t.id,file:p,digest:x.a.base[p]});return {file:p,digest:x.a.base[p]};
     });
   }
   check(session,id) {
     const s=this.read(),x=this.locate(s,session);need(x&&x.a.status==='running'&&x.r.status==='active'&&['builder','verifier'].includes(x.t.role),'Checks require an active builder or verifier');
+    this.assertRunConfig(x.r);
     const target=x.t.role==='verifier'?this.task(s,x.r.id,x.t.target):x.t;need(target.checks.includes(id),'Check is not in the acceptance contract');
     const spec=this.config.checks.find(c=>c.id===id);need(spec,'Unknown check');
     if(spec.type==='mcp')return this.armMcp(session,id);
@@ -230,6 +297,7 @@ export class Engine {
   }
   mcpBefore(session,tool,args) {
     const s=this.read(),x=this.locate(s,session);need(x&&x.t.role==='verifier'&&x.a.status==='running'&&x.r.status==='active','Only an active independent verifier may use Playwright MCP');
+    this.assertRunConfig(x.r);
     const p=x.a.mcpPending;need(p,'Arm a registered MCP check via harness_check first');
     const step=this.config.checks.find(c=>c.id===p.id).steps[p.index];
     need(step&&tool===p.mcpId+'_'+step.tool&&canonical(args)===canonical(step.args),'Browser tool/arguments do not match the registered acceptance step');
@@ -250,6 +318,7 @@ export class Engine {
   }
   accept(runID,taskID,reviewID) {
     return this.transaction(s=>{const r=this.run(s,runID),t=this.task(s,runID,taskID);need(r.status==='active'&&t.status==='verifying','Candidate is not ready');
+      this.assertRunConfig(r);
       if(t.role==='verifier'){need(t.verdict&&['pass','fail'].includes(t.verdict.verdict),'Verifier must return a valid verdict JSON');t.status='accepted';return t}
       const v=this.task(s,runID,reviewID);need(v.role==='verifier'&&v.target===taskID&&v.status==='accepted','Independent accepted verifier required');
       need(v.attempts.at(-1)?.targetAttempt===t.attempts.at(-1)?.id,'Review belongs to an older candidate attempt');

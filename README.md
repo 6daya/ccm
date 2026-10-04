@@ -4,24 +4,50 @@
 
 已验证组合：OpenCode **1.18.34**、Slim **3.0.2**、Playwright MCP **0.0.83**，macOS ARM64。Windows 做了路径、命令和落盘兼容处理，但尚未实机验证。真实 GLM/Opus 质量与费用尚未实测。
 
-> 当前是 harness 基线与 onboarding 原型。推荐的统一 Jarvis 协作架构见 [设计决策](docs/ccm-collaboration.md)，其中标为待实现的能力尚未上线。
+> 当前为 0.2.0：CCM 根目录作为控制台，workspace/ 保存独立业务仓库，任务绑定明确的项目组。布局取舍和与旧版的差距见 [工作台设计](docs/workspace-design.md)，测试边界见 [评估报告](docs/workspace-evaluation.md)。真实公司模型效果仍待验收。公司试跑方案与空白记录见 [质量/费用试跑](docs/company-pilot.md)，知识连接见 [内部 MCP 验证](docs/internal-mcp-validation.md)，剩余候选见 [后续计划](docs/remaining-work.md)。
 
 ## 开始使用
 
-把解压后的工程本身作为团队工作区。无需单独建立“工程目录”和“工作目录”，也不用记安装/init 命令：
+下载交付的 `ccm-0.2.0.zip`，或明确 clone 交付分支（main 不是本次版本）：
+
+```sh
+git clone --branch feat/harness-baseline --single-branch git@github.com:6daya/ccm.git
+```
+
+将业务仓库 clone 或完整复制到 workspace/。保留各仓库的 Git；业务目录已被 CCM Git 忽略。
+
+```text
+ccm/
+  src/、bin/、docs/        # harness 的源码与文档
+  .opencode/              # Jarvis 入口与插件
+  .team-harness/          # 本机配置、任务状态、回执（不提交）
+  workspace/
+    frontend/             # 独立业务仓库
+    backend/              # 独立业务仓库或完整业务大仓
+```
+
+在 CCM 根目录打开 OpenCode。无需手动执行安装/init 命令：
 
 ```sh
 cd /path/to/ccm
 opencode
 ```
 
-打开后默认助手是 **Jarvis（贾维斯）**，直接说“初始化这个工作区”。首次使用的当前模型由公司既有 OpenCode 配置决定；可先通过 `/models` 选择已配置的免费模型。Jarvis 会分步询问模型、仓库、内部 MCP 和验收规则，替你安装依赖、生成配置并调用校验脚本。`/onboard` 是可选快捷入口；Markdown agent 和启动配置在没有 `node_modules` 时也能被 OpenCode 识别。
+打开后默认助手是 **Jarvis（贾维斯）**，直接说：
+
+> 初始化。将 workspace/frontend 和 workspace/backend 登记为 orders 项目。先用公司的免费模型，专家关闭。先从订单链路确认模块边界、保护目录和验收命令，再应用配置。
+
+首次使用的当前模型由公司既有 OpenCode 配置决定；可先通过 `/models` 选择已配置的免费模型。Jarvis 会浅层发现目录，向你确认项目组、模型、内部 MCP、保护路径和验收规则，替你安装 harness 依赖并生成配置。`/onboard` 是可选快捷入口；在没有 `node_modules` 时也能发现 Jarvis。公司 provider/MCP 必须在 CCM 工作区可用；业务子仓库自己的 OpenCode 配置不会自动合并进父工作台。
+
+全新原生配置依赖安装尚未验证通过；本地插件加载时可在模型调用前等待依赖。若启动长时间无响应，按 [冷启动诊断与恢复](docs/cold-start.md) 保留证据；不要切公共源或复制其他机器的缓存作为正式安装方案。
 
 需要已有公司 OpenCode provider、Node 24.15+（或 Node 22.22.2+）、pnpm 和 ripgrep。依赖安装使用现有公司 registry，不切换公共源、不安装系统软件。向导不会询问 API key。免费模型未知之前，启动向导的当前模型由 OpenCode 的选择决定，不能提前保证免费。
 
-首次配置完成后退出并重新打开一次 `opencode`，编排插件在启动时加载。之后仍由默认 Jarvis 接待，直接描述业务任务或询问项目规则，不需要 `--agent` 或切换 agent。**`/workspace`** 可作为检查模型、规则和验收缺失项的快捷入口，仍使用 Jarvis；配置解释是只读的，业务执行通过 harness 的受控子任务完成。
+首次配置完成后退出并重新打开一次 `opencode`，编排插件在启动时加载。之后仍由 Jarvis 接待，直接描述业务任务或询问项目规则，不需要 `--agent` 或切换 agent。多个项目存在歧义时先澄清；选择仅属于当前主会话。任务启动后冻结仓库与检查，中断后在原会话说“继续”。**`/workspace`** 可作为检查入口。
 
-首次向导会展示要持久化的保护边界、预算及具体验收命令，请你确认后才应用。仓库已有的 AGENTS.md/package.json 用来提出规则和检查候选；不会自动执行未知脚本，也不会将脚本名称当作验证通过。现阶段已初始化后的 `/workspace` 能解释规则并提出修改建议，**尚不能对话式应用配置更新或自动管理 Git worktree**。
+首次向导展示保护边界、预算及具体验收命令，确认后才应用。AGENTS.md/package.json 提供规则与检查候选；不会自动执行发现的脚本。后续把新仓库放进 workspace/，直接说“接入 workspace/new-repo”；Jarvis 使用需要工具授权的登记入口添加新项目和明确的命令检查，不能改模型/预算、覆盖已有检查或移除保护。任何任务运行期间禁止登记。自动模型/预算更新、删除项目和 Git worktree 管理尚未实现。
+
+CCM 的原生 Git 面板和 LSP 仍以 CCM 为目录。让 Jarvis 按业务仓库查看状态/差异，运行层会验证独立 Git 根；验收命令在业务仓库 cwd 执行。不隐式 commit/push 或安装业务依赖。源码修改发生在登记的业务仓库，CCM 的 src/bin/config 不属于业务任务范围。
 
 模型 ID 来自 `opencode models`，不根据 GLM/Opus 显示名猜测。所有工作角色初始使用同一个确认免费的模型；可选专家需填写公司网关价格，默认关闭。
 
@@ -49,17 +75,18 @@ node bin/cli.mjs init --workspace /absolute/path/to/workspace
 node bin/cli.mjs doctor --workspace /absolute/path/to/workspace
 ```
 
-若将工程本身初始化为工作区，plugin shim 使用相对导入。仓库 roots、浏览器命令和 Node 路径仍可能是机器绝对路径；迁移机器时要重新核对，不能把运行配置当作完全可搬移的模板。
+CCM 工程的 plugin shim 使用相对导入。项目 roots、检查 cwd 和保护路径可以相对 CCM 根目录保存；搬迁后新任务按新位置解析。Node/浏览器路径、公司 MCP 仍需核对；带旧绝对路径的未完成任务应在原位置恢复，不能直接搬迁后续跑。
 
 ## 一次性登记项目边界和验收
 
 配置位于工作目录 `.team-harness/config.json`。模型可以选任务与证据，不能修改该文件或验收脚本。需要先由你登记项目规则，避免免费主代理自行放宽边界。
 
-- `roots`：允许读取的绝对仓库根目录，可跨仓。
-- `mcpIds`：允许 scout 使用的内部知识 MCP 配置 ID。
-- `protectedWriteRoots`：公共模块等默认禁止修改的绝对路径；连主代理也不能授予例外。
+- `projects`：稳定项目 ID、单仓或跨仓 roots、checkIds、requiredBuilderChecks；路径优先使用 workspace/...，顶层 roots 留空时由项目推导。
+- `roots`：全部登记仓库范围，实际业务读写还受当前任务冻结的项目组限制；CCM 根目录不能被登记。
+- `mcpIds`：允许 scout 使用的内部知识 MCP 配置 ID；目前为该 ID 全工具许可，只接入已保证只读的检索端点。知识摘录的真实性须对照原生回执人工核查，详见内部 MCP 验证步骤。
+- `protectedWriteRoots`：公共模块等默认禁止修改的路径，可相对 CCM 保存；连主代理也不能授予例外。
 - `checks`：受信任的命令或 MCP 验收步骤。
-- `requiredBuilderChecks`：所有代码任务必须包含的检查 ID。
+- `requiredBuilderChecks`：全局必做检查；项目的同名字段用于自己的必做检查，避免前端任务被迫跑另一个无关项目的测试。
 - `browserOrigins`：浏览器导航允许的 origin。
 
 命令检查使用参数数组，不执行任意 shell。例如：
@@ -67,7 +94,7 @@ node bin/cli.mjs doctor --workspace /absolute/path/to/workspace
 ```json
 {
   "id": "unit",
-  "cwd": "/work/web",
+  "cwd": "workspace/frontend",
   "argv": ["node", "scripts/acceptance.mjs"],
   "timeoutMs": 60000
 }

@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath,pathToFileURL} from 'node:url';
 import {parse,modify,applyEdits} from 'jsonc-parser';
+import {Engine} from './engine.mjs';
 export {defaults} from './defaults.mjs';
 export const packageRoot=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 export function playwrightCommand({origins=[],outputDir,executablePath}={}) {
@@ -12,13 +13,14 @@ export function playwrightCommand({origins=[],outputDir,executablePath}={}) {
 export function init(workspace,config) {
  const root=fs.realpathSync(workspace),runtime=path.join(root,'.team-harness'),op=path.join(root,'.opencode');
  if(fs.existsSync(path.join(runtime,'config.json')))throw Error('Already initialized. Edit the existing config explicitly; init will not overwrite it.');
+ new Engine(root,{config});
  const candidates=['opencode.jsonc','opencode.json','.opencode/opencode.jsonc','.opencode/opencode.json'].map(p=>path.join(root,p));
  // This immutable startup profile selects the dependency-free Jarvis agent.
  // It is not a second machine-specific provider config and must not be rewritten.
  const existing=candidates.filter(p=>fs.existsSync(p)).filter(p=>{
   if(p!==path.join(op,'opencode.jsonc'))return true;
   const errors=[],data=parse(fs.readFileSync(p,'utf8'),errors);
-  return !(errors.length===0&&data&&Object.keys(data).length===3&&data.default_agent==='jarvis'&&data.autoupdate===false&&data.share==='disabled');
+  return !(errors.length===0&&data&&Object.keys(data).every(key=>['$schema','default_agent','autoupdate','share'].includes(key))&&(!data.$schema||data.$schema==='https://opencode.ai/config.json')&&data.default_agent==='jarvis'&&data.autoupdate===false&&data.share==='disabled');
  });
  if(existing.length>1)throw Error('Multiple project OpenCode configs exist. Consolidate them before init.');
  const target=existing[0]||path.join(root,'opencode.jsonc');
@@ -33,6 +35,10 @@ export function init(workspace,config) {
  const backup=path.join(runtime,'backups',path.basename(target)+'.before-init');fs.writeFileSync(backup,raw,{mode:0o600});
  let out=raw;
  for(const [key,value] of Object.entries({default_agent:'jarvis',model:config.models.free.id,small_model:config.models.free.id,autoupdate:false,share:'disabled'}))out=applyEdits(out,modify(out,[key],value,{formattingOptions:{insertSpaces:true,tabSize:2}}));
+ if(config.layout==='ccm-workspace'){
+  out=applyEdits(out,modify(out,['snapshot'],false,{formattingOptions:{insertSpaces:true,tabSize:2}}));
+  out=applyEdits(out,modify(out,['watcher','ignore'],[...new Set([...(parsed.watcher?.ignore||[]),'workspace/**','.team-harness/**','artifacts/**'])],{formattingOptions:{insertSpaces:true,tabSize:2}}));
+ }
  // Standard Node Playwright MCP; preserve an existing company definition.
  for(const id of new Set(config.checks.filter(c=>c.type==='mcp').map(c=>c.mcpId)))if(id==='playwright'&&!parsed.mcp?.[id]) {
   out=applyEdits(out,modify(out,['mcp',id],{type:'local',command:playwrightCommand({origins:config.browserOrigins,outputDir:path.join(root,'artifacts','playwright')}),enabled:true},{formattingOptions:{insertSpaces:true,tabSize:2}}));

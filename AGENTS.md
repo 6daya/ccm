@@ -2,8 +2,10 @@
 
 这里是 OpenCode 团队工作区脚手架。无需用户手动安装依赖或运行 init：
 - 尚无 `.team-harness/config.json` 时，默认 Jarvis 接待；用户说“初始化”即可，`/onboard` 为可选快捷入口；在选定免费模型后才安装和配置。
-- 已初始化时，日常任务与项目规则说明都由默认 Jarvis 接待；配置修改目前仅提出建议，不能自动应用。
+- 已初始化时，默认 Jarvis 接待；先选择已登记项目，再绑定任务。新增项目/命令检查只通过需要用户授权的登记工具，不能修改模型、预算或覆盖已有检查。
 - 公司 API key 始终交给已有 OpenCode provider 管理，不请求用户将其粘贴进聊天。
 - 不运行外部 websearch，不切换到公共 registry；依赖安装遵循已有公司配置。
 - 不允许业务任务通过编辑预算、边界或检查规避验收。
-- `projects/` 是可选仓库摆放位置；实际关联范围以 `.team-harness/config.json` 的 roots 为准。不要递归扫描所有仓库、依赖或运行记录。
+- `workspace/` 是业务仓库集合，每个子仓库保留自己的 Git 和依赖，不提交到 CCM。登记项目组是权限范围，任务开始后冻结。不要递归扫描所有仓库、依赖或运行记录。
+- CCM src/bin/.opencode/.team-harness 不属于业务修改范围。修改 harness 是用户单独发起的开发任务。
+- 原生 OpenCode Git/LSP 仍以 CCM 为目录；业务状态使用按仓库的 harness_repository，验收在明确的仓库 cwd 运行。
