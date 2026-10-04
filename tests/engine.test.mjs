@@ -58,6 +58,13 @@ test('cancellation blocks already prepared calls and late writes',t=>{
 test('usage is idempotent and counts cache and reasoning at configured prices',t=>{
  const {e,r,ev}=setup(t);plan(e,r,'a','expert');const p=dispatch(e,r,'a',[ev.id],'boundary: concrete ambiguity');const m={id:'m1',sessionID:'child-'+p.attempt,role:'assistant',modelID:'expert',time:{completed:Date.now()},tokens:{input:100,output:20,reasoning:5,cache:{read:50,write:10}},cost:99};e.usage(m);e.usage(m);assert.equal(Object.keys(e.read().usage).length,1);assert.ok(Math.abs(e.read().usage.m1.usd-0.0024)<1e-10);e.finish(p.attempt,'decision');assert.equal(e.status(r.id).tasks.a.attempts[0].settled,true);
 });
+test('successive goals in one primary session assign observed usage to the current run',t=>{
+ const {e,r}=setup(t);e.cancel(r.id);const next=e.start('root-session','next goal');
+ e.usage({id:'new-primary-message',sessionID:'root-session',role:'assistant',modelID:'free',time:{completed:Date.now()},tokens:{input:100,output:20}});
+ assert.equal(e.read().usage['new-primary-message'].run,next.id);
+ e.cancel(next.id);e.usage({id:'late-primary-message',sessionID:'root-session',role:'assistant',modelID:'free',time:{completed:Date.now()},tokens:{input:10,output:2}});
+ assert.equal(e.read().usage['late-primary-message'].run,next.id);assert.equal(Object.values(e.read().usage).filter(u=>u.run===r.id).length,0);
+});
 test('main agent cannot grant protected module writes or omit mandatory checks',t=>{
  const {e,r,root}=setup(t,(c,root)=>{c.protectedWriteRoots=[path.join(root,'common')];c.requiredBuilderChecks=['check']});
  assert.throws(()=>plan(e,r,'bad-scope','builder',{writeFiles:[path.join(root,'common/event.js')],checks:['check']}),/protected module/);

@@ -2,7 +2,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import {spawnSync} from 'node:child_process';
-import {normalizeConfig,projectList,projectChecks,validateProjects,repositoryContext,discoverRepositories,gitView} from './projects.mjs';
+import {normalizeConfig,projectList,projectChecks,validateProjects,repositoryContext,discoverRepositories,gitView,inspectRepository} from './projects.mjs';
+import {sensitivePath,sensitiveSearchArgs} from './sensitive-paths.mjs';
+import {archiveRun,archiveStatus} from './archive.mjs';
 const canonical=x=>JSON.stringify(x,(_k,v)=>v&&typeof v==='object'&&!Array.isArray(v)?Object.fromEntries(Object.entries(v).sort(([a],[b])=>a.localeCompare(b))):v);
 export const hash = x => crypto.createHash('sha256').update(x).digest('hex');
 const fail = message => {throw new Error(message)};
@@ -91,7 +93,7 @@ export class Engine {
       fs.copyFileSync(file,path.join(this.dir,'backups','config.before-project-'+crypto.randomUUID()+'.json'));
       const tmp=file+'.'+crypto.randomUUID();fs.writeFileSync(tmp,JSON.stringify(raw,null,2)+'\n',{mode:0o600});fs.renameSync(tmp,file);
       Object.assign(this.config,normalized);
-      return {project:id,roots:this.projects().find(p=>p.id===id).roots,registeredChecks:checks.map(x=>x.id),inheritedMandatoryChecks:[...new Set(inherited)],requiredBuilderChecks,restartRequired:false,analysisOnly:!raw.projects.at(-1).checkIds.length};
+      return {project:id,roots:this.projects().find(p=>p.id===id).roots,repositories:resolved.map(root=>({root,...inspectRepository(root)})),registeredChecks:checks.map(x=>x.id),inheritedMandatoryChecks:[...new Set(inherited)],requiredBuilderChecks,restartRequired:false,analysisOnly:!raw.projects.at(-1).checkIds.length,checksExecuted:false};
     });
   }
   read() {return fs.existsSync(this.stateFile)?JSON.parse(fs.readFileSync(this.stateFile,'utf8')):{version:1,runs:{},usage:{},reconciliations:[]};}
@@ -119,6 +121,7 @@ export class Engine {
     if(runID)need(this.scope(this.status(runID)).roots.some(root=>inside(p,root)),'Path is outside the active project');
     if(this.config.layout==='ccm-workspace')need(inside(p,path.join(this.directory,'workspace')),'CCM implementation is protected from business tasks');
     need(!p.split(path.sep).some(x=>['.team-harness','.opencode','.git'].includes(x)),'Runtime/configuration paths are protected');
+    need(!sensitivePath(p),'Sensitive credential paths are protected');
     let ancestor=p;while(!fs.existsSync(ancestor)) ancestor=path.dirname(ancestor);
     const actual=path.join(fs.realpathSync(ancestor),path.relative(ancestor,p));
     need(actual===p,'Symlink paths are not allowed');
@@ -127,20 +130,25 @@ export class Engine {
   }
   search({root,pattern='',glob,mode='text',maxResults=40},runID) {
     const canonical=fs.realpathSync(root);
+    need(canonical===path.resolve(root),'Symlink search roots are not allowed');
     need(this.config.roots.some(r=>inside(canonical,fs.realpathSync(r))),'Search outside repository roots');
     if(runID)need(this.scope(this.status(runID)).roots.some(root=>inside(canonical,root)),'Search outside the active project');
     need(!canonical.split(path.sep).some(p=>['.git','.opencode','.team-harness','node_modules'].includes(p)),'Protected search root');
+    need(!sensitivePath(canonical),'Sensitive credential search roots are protected');
     need(typeof pattern==='string'&&pattern.length<=300&&Number.isInteger(maxResults)&&maxResults>=1&&maxResults<=80,'Invalid bounded search');
     need(['files','text'].includes(mode),'Search mode must be files or text');
     if(mode==='text')need(pattern.trim(),'Text search requires a narrow pattern');
-    const args=['--no-heading','--color','never','-g','!**/.team-harness/**','-g','!**/.opencode/**','-g','!**/.git/**','-g','!**/node_modules/**'];
+    const args=['--no-heading','--color','never'];
     if(glob){need(typeof glob==='string'&&glob.length<=200,'Invalid glob');args.push('-g',glob)}
-    if(mode==='files')args.push('--files',canonical);else args.push('-n','--max-count','3','--',pattern,canonical);
+    // Mandatory exclusions follow user glob so a broad include cannot override them.
+    args.push('-g','!**/.team-harness/**','-g','!**/.opencode/**','-g','!**/.git/**','-g','!**/node_modules/**',...sensitiveSearchArgs());
+    if(mode==='files')args.push('--files','--null',canonical);else args.push('--json','--max-count','3','--',pattern,canonical);
     const out=spawnSync('rg',args,{encoding:'utf8',timeout:5000,maxBuffer:1e6});
     need(!out.error,'Search unavailable/too broad: install rg or narrow the scope');
     need(out.status===0||out.status===1,'Search failed: '+out.stderr?.slice(0,500));
-    const lines=out.stdout.trim().split('\n').filter(Boolean);
-    return {root:canonical,mode,results:lines.slice(0,maxResults),truncated:lines.length>maxResults,next:'Read relevant source excerpts via harness_read; search hits are not verification evidence.'};
+    const lines=mode==='files'?out.stdout.split('\0').filter(Boolean):out.stdout.split('\n').filter(Boolean).flatMap(line=>{const item=JSON.parse(line);if(item.type!=='match'||!item.data.path.text||!item.data.lines.text)return [];return [{file:item.data.path.text,line:item.data.line_number,text:item.data.lines.text.trimEnd()}]});
+    const safe=lines.filter(line=>{try{this.safePath(mode==='files'?line:line.file,false,runID);return true}catch{return false}}).map(line=>mode==='files'?line:`${line.file}:${line.line}:${line.text}`);
+    return {root:canonical,mode,results:safe.slice(0,maxResults),truncated:safe.length>maxResults,next:'Read relevant source excerpts via harness_read; search hits are not verification evidence.'};
   }
   start(session,goal,projectID) {
     need(goal.trim().length>0,'A goal is required');
@@ -257,7 +265,8 @@ export class Engine {
     if(message.role!=='assistant'||!message.time?.completed)return;
     return this.transaction(s=>{
       if(s.usage[message.id])return;
-      const x=this.locate(s,message.sessionID);const root=Object.values(s.runs).find(r=>r.session===message.sessionID);
+      const x=this.locate(s,message.sessionID),sessionRuns=Object.values(s.runs).filter(r=>r.session===message.sessionID);
+      const root=sessionRuns.find(r=>r.status==='active')||sessionRuns.at(-1);
       if(!x&&!root)return;
       const tier=x?.a.tier||'free',m=this.config.models[tier],tokens=message.tokens||{};
       const price=m.price||{};
@@ -337,6 +346,11 @@ export class Engine {
   markInterrupted(session) {return this.transaction(s=>{const x=this.locate(s,session);if(x&&x.a.status==='running'){x.a.status='unknown';if(x.r.status==='active')x.t.status='unknown';x.a.settled=x.a.tier==='free';this.log(x.r,'interrupted',{task:x.t.id})}})}
   reconcile(runID,taskID,usd,note) {need(Number.isFinite(usd)&&usd>=0&&note.trim(),'Gateway reconciliation amount/reason required');return this.transaction(s=>{const t=this.task(s,runID,taskID);const a=t.attempts.at(-1);need(a&&!a.settled&&a.status!=='running','No unresolved completed/interrupted request');const recorded=Object.values(s.usage).filter(u=>u.session===a.session).reduce((v,u)=>v+u.usd,0);need(usd>=recorded,'Reconciliation must cover already recorded usage');s.reconciliations.push({run:runID,task:taskID,attempt:a.id,usd:usd-recorded,month:now().slice(0,7),note,at:now()});a.settled=true;return a});}
   cancel(runID) {return this.transaction(s=>{const r=this.run(s,runID);r.status='cancelled';for(const t of Object.values(r.tasks))if(!terminal.includes(t.status)){t.status='cancelled';const a=t.attempts.at(-1);if(a?.status==='prepared'){a.status='cancelled';a.settled=true}}this.log(r,'cancelled',{});return r});}
-  complete(runID) {return this.transaction(s=>{const r=this.run(s,runID);need(r.status==='active'&&Object.keys(r.tasks).length>0&&Object.values(r.tasks).every(t=>['accepted','cancelled'].includes(t.status)),'All required tasks must be accepted');need(Object.values(r.tasks).flatMap(t=>t.attempts).every(a=>a.settled),'Unreconciled usage prevents final completion');r.status='accepted';this.log(r,'delivered',{});return r});}
+  archiveStatus(runID) {return archiveStatus(this,this.status(runID))}
+  archive(runID) {try{return this.transaction(()=>archiveRun(this,runID))}catch(error){return {status:'failed',error:error.message,retry:'Retry archive only; do not rerun accepted tasks. For a stale state lock use doctor.'}}}
+  complete(runID) {
+    const r=this.transaction(s=>{const r=this.run(s,runID);if(r.status==='accepted')return r;need(r.status==='active'&&Object.keys(r.tasks).length>0&&Object.values(r.tasks).every(t=>['accepted','cancelled'].includes(t.status)),'All required tasks must be accepted');need(Object.values(r.tasks).flatMap(t=>t.attempts).every(a=>a.settled),'Unreconciled usage prevents final completion');r.status='accepted';this.log(r,'delivered',{});return r});
+    return {...r,archive:this.archive(runID)};
+  }
   status(runID) {const s=this.read();return runID?this.run(s,runID):s;}
 }

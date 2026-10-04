@@ -17,6 +17,7 @@ flowchart LR
 
 - `src/engine.mjs`：状态机、不可变合同、证据摘要与源文件 hash、预算预留、精确写入范围、审查与 attempt 绑定、MCP 固定步骤回执。
 - `src/projects.mjs`：workspace/ 浅层发现、相对路径解析、项目组检查、根到模块规则上下文、按仓库 Git 视图。Engine 将项目范围固定到每次运行，并拒绝跨项目读/搜/写/检查。
+- `src/archive.mjs`：复用报告渲染，既有状态锁下导出固定私有档案；业务 accepted 与归档失败分开，重试不派发任务。`src/sensitive-paths.mjs` 为业务文件工具和 Git diff 提供统一的常见敏感文件名策略。
 - `src/plugin.mjs`：OpenCode 工具/事件/hook 适配，角色/模型权限，原生子会话绑定与恢复，Slim 组合。
 - `src/prompts.mjs`：主代理的动态决策指引和角色提示；提示不能绕过程序限制。
 - `src/init.mjs`、`bin/cli.mjs`：初始化、JSONC 保留、备份、doctor、状态、原会话恢复、费用核对与报告。
@@ -27,5 +28,7 @@ flowchart LR
 状态锁覆盖本工作目录。相同文件的并发 writer 被拒绝；相同浏览器 MCP 的验收串行租用。任务输入带来源片段和 hash，结果保留在本地。专家不继承全部主会话历史；给出的证据 packet 有大小上限。
 
 固定检查是质量下限；业务正确性还需要独立语义审查和人工最终验收。自由设计、跨仓知识完整性、真实模型能力仍需实际校准。
+
+成功 run 自动导出本机 report/manifest。规则、来源真实性、检查和用量按既有记录保存；实际账单与晚到用量保持未知/快照说明。只归档必要结果，不复制 provider 备份或扫描仓库打包。经验按需维护业务 docs，不自动晋升或改变系统规则。
 
 CCM 原生 Git/LSP 仍处于父工作台，不创建独立仓库原生会话。业务检查显式指定 cwd，Git 只执行受控 status/diff 并验证真实仓库根。CCM snapshots 关闭，watcher 忽略业务集合。多项目不自动创建多份摘要或全量索引；检索和上下文按实际任务收集。

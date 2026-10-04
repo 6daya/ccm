@@ -58,6 +58,8 @@ CCM 应当是一套本地工作区与受控执行系统：Jarvis 提供单一对
 
 已有：free/expert 两槽、只读专家、受控原生 task、任务合同、精确范围、状态与回执、预算估算、固定检查、Node Playwright MCP、CLI 恢复；Jarvis 默认入口及可选 /onboard；0.2.0 增加 CCM/workspace 目录、项目登记和会话选择、冻结的项目范围、按路径规则上下文、按仓库 Git 视图，以及获准后新增项目/命令检查。
 
+0.2.1 补确定性自动私有归档、接入时独立 Git/dirty 核对、常见敏感路径拒绝和同会话连续任务用量归属修复。47 项程序回归及两项真实工具集成通过；模拟网关仍不是真实模型。新手流程见 [使用指引](getting-started.md)，证据见 [增量交付](release-0.2.1.md)。后面的 39 项与 2026-10-04 结果保留为 0.2.0 历史记录。
+
 待实现：原生仓库会话/Git/LSP 融合、已有配置的通用更新、按风险选择流程、可选的强模型实现、更多公司模型实测。真实免费模型能否稳定识别意图和完成引导仍需司内体验。项目布局与差距分析见 [工作台设计](workspace-design.md)。
 
 39 项程序测试通过。本次真实 OpenCode 1.18.34 检查了无 harness node_modules 时默认 Jarvis、workspace 项目发现、provider 引用保留、重启后免费模型和登记授权。详见 [本次评估](workspace-evaluation.md)。`validation-jarvis.json` 保留此前 0.1.0 的入口验证记录，不能代替本次数据或公司模型对话验收。

@@ -7,6 +7,7 @@ import {stdin,stdout} from 'node:process';
 import {Engine} from '../src/engine.mjs';
 import {defaults,init,packageRoot} from '../src/init.mjs';
 import {describeWorkspace} from '../src/workspace.mjs';
+import {renderReport} from '../src/archive.mjs';
 const args=process.argv.slice(2),cmd=args.shift()||'help';
 const value=(key,fallback)=>{const i=args.indexOf('--'+key);return i>=0?args[i+1]:fallback};
 const flag=key=>args.includes('--'+key);
@@ -60,11 +61,13 @@ async function main() {
  if(cmd==='status'||cmd==='report') {
   const e=new Engine(workspace),state=e.read();const run=value('run');
   if(cmd==='status'){output(run?e.status(run):state);return}
+  if(flag('archive')){
+   if(!run||value('out'))throw Error('Fixed archive requires --run ID and no --out; use report --out for an active snapshot');
+   const result=e.archive(run);output(result);if(result.status!=='complete')process.exitCode=1;return;
+  }
   const rs=run?[e.status(run)]:Object.values(state.runs);
-  const text=rs.map(r=>{
-   const usage=Object.values(state.usage).filter(u=>u.run===r.id),usd=usage.reduce((s,u)=>s+u.usd,0)+state.reconciliations.filter(u=>u.run===r.id).reduce((s,u)=>s+u.usd,0);
-   return `# ${r.goal}\n\nRun: ${r.id}\nProject: ${r.project||"legacy"}\nRepositories: ${(r.scope?.roots||e.config.roots).join(", ")}\nSession: ${r.session}\nStatus: ${r.status}\nEstimated USD: ${usd.toFixed(6)} (configured prices; not gateway bill)\n\n| Task | Role | Status | Attempts | Model |\n| --- | --- | --- | --- | --- |\n`+Object.values(r.tasks).map(t=>`| ${t.id} | ${t.role} | ${t.status} | ${t.attempts.length} | ${t.attempts.map(a=>a.model).join(', ')} |`).join('\n')+'\n\n'+Object.values(r.tasks).map(t=>`## ${t.id}\n\nAcceptance: ${t.acceptance.join('; ')}\n\n${t.result||'(no result)'}\n\nChecks:\n\n\`\`\`json\n${JSON.stringify(t.checksRun,null,2)}\n\`\`\``).join('\n\n');
-  }).join('\n\n');if(value('out'))fs.writeFileSync(path.resolve(value('out')),text);else console.log(text);return;
+  const text=rs.map(r=>renderReport(e,r,state)).join('\n\n');
+  if(value('out'))fs.writeFileSync(path.resolve(value('out')),text,{mode:0o600});else console.log(text);return;
  }
  if(cmd==='resume') {
   const e=new Engine(workspace),r=value('run')?e.status(value('run')):Object.values(e.read().runs).filter(r=>r.status==='active').at(-1);
@@ -76,6 +79,6 @@ async function main() {
  }
  if(cmd==='cancel'){const e=new Engine(workspace);output(e.cancel(value('run')));console.log('本地已取消，写入/新派发会被拒绝。若 OpenCode 仍在线，在主会话说取消以主动 abort；供应商在途请求可能继续计费。');return}
  if(cmd==='eval') {await import('../eval/run.mjs');return}
- console.log(`CCM 0.2.0 — OpenCode 1.18.34 / Slim 3.0.2\n\nnode ${path.join(packageRoot,'bin/cli.mjs')} init [--workspace PATH] [--free provider/model] [--config FILE]\n  projects | project-add --config FILE\n  example | doctor [--opencode PATH] [--repair-lock]\n  status [--run ID] | resume [--run ID] | report [--out FILE]\n  reconcile --run ID --task ID --usd TOTAL --note GATEWAY_RECEIPT\n  cancel --run ID\n  eval\n\nAPI keys remain in your existing OpenCode provider config. No actual model is called by init or doctor.`);
+ console.log(`CCM 0.2.1 — OpenCode 1.18.34 / Slim 3.0.2\n\nnode ${path.join(packageRoot,'bin/cli.mjs')} init [--workspace PATH] [--free provider/model] [--config FILE]\n  projects | project-add --config FILE\n  example | doctor [--opencode PATH] [--repair-lock]\n  status [--run ID] | resume [--run ID] | report [--run ID] [--out FILE] | report --run ID --archive\n  reconcile --run ID --task ID --usd TOTAL --note GATEWAY_RECEIPT\n  cancel --run ID\n  eval\n\nAPI keys remain in your existing OpenCode provider config. No actual model is called by init or doctor.`);
 }
 main().catch(e=>{console.error('Harness:',e.message);process.exitCode=1});

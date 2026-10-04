@@ -9,3 +9,5 @@
 - `workspace/` 是业务仓库集合，每个子仓库保留自己的 Git 和依赖，不提交到 CCM。登记项目组是权限范围，任务开始后冻结。不要递归扫描所有仓库、依赖或运行记录。
 - CCM src/bin/.opencode/.team-harness 不属于业务修改范围。修改 harness 是用户单独发起的开发任务。
 - 原生 OpenCode Git/LSP 仍以 CCM 为目录；业务状态使用按仓库的 harness_repository，验收在明确的仓库 cwd 运行。
+- 接入须是独立 Git 根，展示已有 dirty 文件，不 reset。常见凭据路径由业务工具拒绝；可信 checks/MCP 仍由公司环境管理。
+- 正式成功 run 由程序自动私有归档，无额外模型请求。归档失败与业务 accepted 分开；只重试导出，不重跑已完成任务。代码/长期文档在业务仓库，经验按需维护，不能自动改变 AGENTS 或权限。

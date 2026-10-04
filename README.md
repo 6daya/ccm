@@ -4,11 +4,11 @@
 
 已验证组合：OpenCode **1.18.34**、Slim **3.0.2**、Playwright MCP **0.0.83**，macOS ARM64。Windows 做了路径、命令和落盘兼容处理，但尚未实机验证。真实 GLM/Opus 质量与费用尚未实测。
 
-> 当前为 0.2.0：CCM 根目录作为控制台，workspace/ 保存独立业务仓库，任务绑定明确的项目组。布局取舍和与旧版的差距见 [工作台设计](docs/workspace-design.md)，测试边界见 [评估报告](docs/workspace-evaluation.md)。真实公司模型效果仍待验收。公司试跑方案与空白记录见 [质量/费用试跑](docs/company-pilot.md)，知识连接见 [内部 MCP 验证](docs/internal-mcp-validation.md)，剩余候选见 [后续计划](docs/remaining-work.md)。
+> 当前为 0.2.1：保留 0.2 的项目组/任务冻结机制，新增自动私有归档、独立 Git 接入核对和敏感路径过滤。第一次使用请先读 [完整新手指引](docs/getting-started.md)，变更与本轮证据见 [0.2.1 交付](docs/release-0.2.1.md)。布局取舍见 [工作台设计](docs/workspace-design.md)，历史 0.2.0 测试见 [评估报告](docs/workspace-evaluation.md)。真实公司模型效果仍待验收。公司试跑方案与空白记录见 [质量/费用试跑](docs/company-pilot.md)，知识连接见 [内部 MCP 验证](docs/internal-mcp-validation.md)，剩余候选见 [后续计划](docs/remaining-work.md)。
 
 ## 开始使用
 
-下载交付的 `ccm-0.2.0.zip`，或明确 clone 交付分支（main 不是本次版本）：
+下载交付的 `ccm-0.2.1.zip`，或明确 clone 交付分支（main 不是本次版本）：
 
 ```sh
 git clone --branch feat/harness-baseline --single-branch git@github.com:6daya/ccm.git
@@ -47,7 +47,7 @@ opencode
 
 首次向导展示保护边界、预算及具体验收命令，确认后才应用。AGENTS.md/package.json 提供规则与检查候选；不会自动执行发现的脚本。后续把新仓库放进 workspace/，直接说“接入 workspace/new-repo”；Jarvis 使用需要工具授权的登记入口添加新项目和明确的命令检查，不能改模型/预算、覆盖已有检查或移除保护。任何任务运行期间禁止登记。自动模型/预算更新、删除项目和 Git worktree 管理尚未实现。
 
-CCM 的原生 Git 面板和 LSP 仍以 CCM 为目录。让 Jarvis 按业务仓库查看状态/差异，运行层会验证独立 Git 根；验收命令在业务仓库 cwd 执行。不隐式 commit/push 或安装业务依赖。源码修改发生在登记的业务仓库，CCM 的 src/bin/config 不属于业务任务范围。
+CCM 的原生 Git 面板和 LSP 仍以 CCM 为目录。接入时会核对独立 Git 根、展示 dirty 文件并保留改动；让 Jarvis 按业务仓库查看状态/差异。验收命令在业务仓库 cwd 执行。业务工具当前没有 commit/push、PR、部署或依赖安装入口，沿用你的现有流程。源码修改发生在登记的业务仓库，CCM 的 src/bin/config 不属于业务任务范围。
 
 模型 ID 来自 `opencode models`，不根据 GLM/Opus 显示名猜测。所有工作角色初始使用同一个确认免费的模型；可选专家需填写公司网关价格，默认关闭。
 
@@ -126,11 +126,18 @@ node node_modules/@playwright/mcp/cli.js --headless --isolated --no-webmcp
 node bin/cli.mjs status --workspace /work/team
 node bin/cli.mjs resume --workspace /work/team
 node bin/cli.mjs report --workspace /work/team --out /work/team/report.md
+node bin/cli.mjs report --workspace /work/team --run RUN_ID --archive
 ```
 
 `resume` 显示原主会话 ID。用 `opencode --session <ID>` 打开它，直接说“继续”。主代理读取持久化状态，并与 OpenCode 的实时子会话状态、消息结果核对。已完成工作不盲目重跑。
 
 `.team-harness/state.json` 保存逻辑任务、每次 attempt、依赖、范围、证据、用量、预算预留和状态变化。`receipts/` 保留每次子代理的原始输出。主代理的状态工具返回简要结果；需要详情再读取切片，避免把所有子会话完整历史交给专家。
+
+正式成功 run 自动在 `.team-harness/archive/<projectId>/<runId>/` 保存 `report.md` 和 `manifest.json`，不额外调用模型。业务 accepted 与归档成功分别返回；在原会话说“继续完成归档”或使用 `report --run RUN_ID --archive` 可只重试导出，不重复业务/专家。完整档案校验后复用，外部修改或损坏不会被静默覆盖。活动任务使用普通 report 导出快照；取消/失败的终止任务也可按需归档，并明确未完成。沿用既有状态锁；崩溃留下的私有 `.pending-*` 不会当作正式档案。
+
+档案保留来源真实性标记、实际检查及未知项；费用为记录时快照与价格估算，实际网关账单未知，晚到主会话用量可能未包含。代码/长期文档仍在业务仓库；经验仅按明确需求维护，不自动编辑 AGENTS、发布知识或全量加载历史报告。详见新手指引。
+
+常见 `.env` 变体、认证配置与私钥路径由 `src/sensitive-paths.mjs` 的固定策略拒绝业务读/搜索/上下文/写入/Git diff。用户搜索 glob 不能覆盖排除。它不是机密内容扫描或 OS 沙箱；可信 checks、MCP 和初始向导的原生环境仍需管理。报告默认本机私有，不自动打包 provider、截图或全部运行目录。
 
 付费请求中断且账单不明时，保留预留额并阻止重试。按网关账单人工核对：
 

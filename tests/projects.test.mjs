@@ -12,6 +12,7 @@ function fixture(t) {
  const root=fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(),'ccm-projects-')));t.after(()=>fs.rmSync(root,{recursive:true,force:true}));
  fs.writeFileSync(path.join(root,'package.json'),'{"name":"ccm"}');fs.mkdirSync(path.join(root,'src'));fs.writeFileSync(path.join(root,'src/private.mjs'),'harness implementation');
  for(const name of ['frontend','backend']){const repo=path.join(root,'workspace',name);fs.mkdirSync(path.join(repo,'apps/orders'),{recursive:true});fs.writeFileSync(path.join(repo,'package.json'),JSON.stringify({name,scripts:{test:'node check.mjs'}}));fs.writeFileSync(path.join(repo,'AGENTS.md'),`${name}: business code belongs in apps/orders.`);fs.writeFileSync(path.join(repo,'apps/orders/AGENTS.md'),'Orders must whitelist payload fields.');fs.writeFileSync(path.join(repo,'apps/orders/index.js'),'export const event = "old";\n');fs.writeFileSync(path.join(repo,'check.mjs'),'console.log(process.cwd());');}
+ for(const name of ['frontend','backend'])assert.equal(spawnSync('git',['init','-q'],{cwd:path.join(root,'workspace',name)}).status,0);
  const c=defaults(root,'company/free');
  c.checks=['frontend','backend'].map(id=>({id:id+'-test',cwd:'workspace/'+id,argv:[process.execPath,'check.mjs']}));
  c.projects.forEach(p=>{p.checkIds=[p.id+'-test'];p.requiredBuilderChecks=[p.id+'-test']});
@@ -81,10 +82,10 @@ test('relative project configuration is portable for new tasks; no absolute root
 });
 test('Git views target the independent business repository and refuse accidental parent CCM context',t=>{
  const {root,e,front,back}=fixture(t),git=(cwd,args)=>{const r=spawnSync('git',args,{cwd,encoding:'utf8'});assert.equal(r.status,0,r.stderr);return r.stdout};
- git(root,['init','-q']);git(front,['init','-q']);git(front,['add','.']);git(front,['-c','user.name=fixture','-c','user.email=fixture@example.invalid','commit','-qm','fixture']);
+ git(root,['init','-q']);git(front,['add','.']);git(front,['-c','user.name=fixture','-c','user.email=fixture@example.invalid','commit','-qm','fixture']);
  const r=e.start('a','inspect git','orders');fs.appendFileSync(path.join(front,'apps/orders/index.js'),'// business change\n');
  assert.match(e.repository(r.id,{root:front,mode:'status'}).text,/apps\/orders\/index.js/);assert.match(e.repository(r.id,{root:front,mode:'diff'}).text,/business change/);
- assert.throws(()=>e.repository(r.id,{root:back,mode:'status'}),/independent Git/);assert.throws(()=>e.repository(r.id,{root,mode:'status'}),/active project/);
+ fs.rmSync(path.join(back,'.git'),{recursive:true});assert.throws(()=>e.repository(r.id,{root:back,mode:'status'}),/independent Git/);assert.throws(()=>e.repository(r.id,{root,mode:'status'}),/active project/);
 });
 test('fresh CCM configuration excludes business repos from watchers and disables CCM snapshots',t=>{
  const {root}=fixture(t),text=fs.readFileSync(path.join(root,'opencode.jsonc'),'utf8');assert.match(text,/workspace\/\*\*/);assert.match(text,/"snapshot": false/);
@@ -94,4 +95,30 @@ test('empty CCM and symlinked workspace cannot silently become a business projec
  const root=fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(),'ccm-empty-')));t.after(()=>fs.rmSync(root,{recursive:true,force:true}));fs.writeFileSync(path.join(root,'package.json'),'{"name":"ccm"}');
  const c=defaults(root,'company/free');assert.deepEqual(c.projects,[]);assert.throws(()=>init(root,c),/roots|project/);assert.equal(fs.existsSync(path.join(root,'.team-harness')),false);
  fs.symlinkSync(os.tmpdir(),path.join(root,'workspace'));assert.throws(()=>defaults(root),/symlink/);
+});
+test('intake refuses parent Git roots and reports dirty paths without modifying files or registration',t=>{
+ const {root,e,front}=fixture(t);assert.equal(spawnSync('git',['init','-q'],{cwd:root}).status,0);
+ const loose=path.join(root,'workspace/loose');fs.mkdirSync(loose);fs.writeFileSync(path.join(loose,'README.md'),'Preserve me');
+ const before=fs.readFileSync(path.join(e.dir,'config.json'),'utf8'),found=e.discover();
+ assert.equal(found.repositories.find(r=>r.id==='loose').independentGit,false);
+ assert.equal(found.repositories.find(r=>r.id==='frontend').dirty,true);
+ assert.ok(found.repositories.find(r=>r.id==='frontend').changes.some(c=>c.file==='package.json'));
+ assert.throws(()=>e.registerProject({id:'loose',roots:['workspace/loose']}),/independent Git/);
+ assert.equal(fs.readFileSync(path.join(e.dir,'config.json'),'utf8'),before);assert.equal(fs.readFileSync(path.join(loose,'README.md'),'utf8'),'Preserve me');
+ assert.ok(defaults(root).projects.every(p=>p.id!=='loose'));assert.ok(fs.existsSync(path.join(front,'apps/orders/index.js')));
+});
+test('sensitive filenames are blocked across source, context, search overrides and tracked Git diff',t=>{
+ const {e,front}=fixture(t),r=e.start('a','sensitive policy','frontend');
+ const secret='FIXTURE_SECRET_MUST_NOT_ESCAPE',names=['.env','.env.local','.ENV.production','.npmrc','.netrc','auth.json','credentials.json','id_ed25519','private.pem','.aws/credentials'];
+ for(const name of names){const file=path.join(front,name);fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,secret);assert.throws(()=>e.evidence(r.id,{file}),/Sensitive/);assert.throws(()=>e.context('a',{files:[file]}),/Sensitive/)}
+ fs.writeFileSync(path.join(front,'environment.js'),'const ordinary = "SAFE_HIT";');
+ for(const mode of ['files','text']){
+  const result=e.search({root:front,mode,pattern:secret,glob:'**/*'},r.id);assert.ok(!JSON.stringify(result).includes(secret));assert.ok(result.results.every(line=>!names.some(name=>line.includes(name))));
+ }
+ assert.ok(e.search({root:front,mode:'text',pattern:'SAFE_HIT'},r.id).results.some(line=>line.includes('SAFE_HIT')));
+ assert.throws(()=>e.search({root:path.join(front,'.aws'),mode:'files'},r.id),/Sensitive/);
+ const git=args=>{const out=spawnSync('git',args,{cwd:front,encoding:'utf8'});assert.equal(out.status,0,out.stderr)};
+ git(['add','.']);git(['-c','user.name=fixture','-c','user.email=fixture@example.invalid','commit','-qm','fixture']);
+ for(const name of names)fs.appendFileSync(path.join(front,name),'\n'+secret+'-CHANGED');fs.appendFileSync(path.join(front,'environment.js'),'\n// safe business change');
+ const diff=e.repository(r.id,{root:front,mode:'diff'});assert.match(diff.text,/safe business change/);assert.ok(!diff.text.includes(secret));assert.equal(diff.sensitivePathsExcluded,true);
 });

@@ -1,0 +1,142 @@
+{
+  "version": "0.2.1",
+  "date": "2026-10-05",
+  "baseCommit": "c45b6a6b09cfdec0ecf87534f084933a1f7b2c8f",
+  "platform": "darwin",
+  "arch": "arm64",
+  "tests": {
+    "total": 47,
+    "passed": 47,
+    "failed": 0,
+    "output": "validation-0.2.1-tests.txt",
+    "includesCrashDuringExportAndExistingDoctorRecovery": true
+  },
+  "bootstrap": {
+    "ok": true,
+    "date": "2026-10-05",
+    "opencode": "1.18.34",
+    "kind": "real-opencode-workspace-bootstrap-smoke",
+    "notRealLLM": true,
+    "nativeDependencyCacheReused": true,
+    "harnessDependenciesAbsentBeforeOnboarding": true,
+    "defaultAgent": "jarvis",
+    "relativeProjectDiscovery": true,
+    "providerReferencePreserved": true,
+    "projectRegistrationRequiresApproval": true,
+    "businessShellAndConfigEditDenied": true,
+    "restartRequired": true,
+    "promptRegistrationConsistent": true,
+    "initializedSlashRegistrationConsistent": true,
+    "intakeIndependentGitChecked": true,
+    "archiveCompletionToolAvailable": true
+  },
+  "integration": {
+    "ok": true,
+    "kind": "deterministic-gateway-real-opencode-integration",
+    "notRealLLM": true,
+    "browserMode": "real-playwright-mcp",
+    "nativeDependencyCacheReused": true,
+    "versions": {
+      "opencode": "1.18.34",
+      "slim": "3.0.2",
+      "playwrightMcp": "0.0.83"
+    },
+    "commands": [
+      {
+        "label": "topology",
+        "exit": 0,
+        "ms": 3693
+      },
+      {
+        "label": "observability-phase1",
+        "exit": 0,
+        "ms": 3190
+      },
+      {
+        "label": "observability-resumed",
+        "exit": 0,
+        "ms": 5577
+      }
+    ],
+    "requestCount": 72,
+    "requestsByRole": {
+      "coordinator": 51,
+      "scout": 4,
+      "verifier": 11,
+      "builder": 5,
+      "expert": 1
+    },
+    "runtimeSourceSnapshotMatches": true,
+    "runtimeFilesChangedAfterIntegration": [],
+    "archives": [
+      {
+        "runId": "7258f3d9-7a0c-4352-8417-1d7107b0047b",
+        "project": "orders-system",
+        "status": "complete",
+        "reportSha256": "04cf1a87004655a803789a02fb445b16b1239b83ffc79986f8ed02abcad48538",
+        "nativeCompleteReturnedPaths": true,
+        "sourceCount": 4,
+        "checkCount": 0,
+        "receiptCount": 2
+      },
+      {
+        "runId": "fb313d68-f1a3-489f-b0ad-29e737554873",
+        "project": "orders-system",
+        "status": "complete",
+        "reportSha256": "0a5e0cb351c9f39f7714c13926fd1933573a3582169bdeb6f4c40fb1a0de6c5e",
+        "nativeCompleteReturnedPaths": true,
+        "sourceCount": 2,
+        "checkCount": 2,
+        "receiptCount": 6
+      }
+    ],
+    "archiveRetryModelRequestDelta": 0,
+    "acceptedTasksAndPaidExpertNotReplayed": true,
+    "screenshot": "evidence/orders-observability-0.2.1.png",
+    "screenshotSha256": "7314e08459c53e73d00c0eced829dce4e5cd0d555e74478020c19beedafa6039"
+  },
+  "coldStartup": {
+    "status": "unresolved",
+    "evidence": "validation-cold-start.json",
+    "investigationRepeatedThisRelease": false
+  },
+  "companyValidation": {
+    "status": "not-run",
+    "realModelQuality": null,
+    "actualGatewayBilling": null,
+    "internalMcpRealVerification": false
+  },
+  "sourceSha256": {
+    "src/archive.mjs": "0725bcc70d360841af084fc89888a0a987bd8b602899a0f667eb9b7e79982afb",
+    "src/defaults.mjs": "6ec4276b3157c8e55786e50faad2769e95dafd415a70d1994fda1563121307c6",
+    "src/engine.mjs": "94c2527f8c2d9fdb3dc2f9c86b44aaa517c53d71a6989610baac5b4aa98189ee",
+    "src/init.mjs": "5692ec37017e1df02c447ec679ee9a7ec3fbf20b888998db7c6d6344c5090642",
+    "src/plugin.mjs": "77c4e4bcc6863eee5d6f468e30f1b81f2780740b9d0f98f0c0f7c9e81b51ab15",
+    "src/projects.mjs": "2d67626fe44f5319ccc5c8ae8dafb2779e754443985655951926881746467595",
+    "src/prompts.mjs": "68b5ea7b30cf87d1af02a04e1a5049f67c51b8dbee5838936a38bbcde84c66b6",
+    "src/sensitive-paths.mjs": "a880cf06ad04e7df1334a6d4f95d1573b88ad515ede533111ced8b95b91565ca",
+    "src/workspace.mjs": "d69440e35c06b46b425ea623fd0a725ddaf7b7e10f2f316719e633d53b741b9f",
+    "bin/cli.mjs": "b01862109c3b963c0f6db0bba80a6a0c384d9a9eaf7264d59f7324e0f720dc8f",
+    "bin/onboard.mjs": "8c58091291c5c58c22cb568de5824deb4f68832e47b60633ea16e9ca670b07ee",
+    "eval/case-server.mjs": "d92fc93c2e48e37b2e2e84ecce48ae592454a2705a829cdd22b89fc9dbe9f0e8",
+    "eval/diagnose-startup.mjs": "620c78bae11acc498037a780c4fe353c3503a3dd2c39a030a460c121040449f5",
+    "eval/fixtures.mjs": "520b6ca183b07d5a5f433da6266bde1ef668097bc8f6190dafa0303b1eb7dd72",
+    "eval/gateway.mjs": "14b12fcfbd0dd61528ebeef9e85ac3a121aca72bae1220b78ff136f8798af61f",
+    "eval/mcp-fixture.mjs": "e50a451d9a937cfb1441260f7f103de1e9abb19b8ff3eca586e98977c25f94c6",
+    "eval/run.mjs": "f842294e6629206f66652b08b7a83515eb68af5b94cd77044455c61baa799afa",
+    ".opencode/agents/jarvis.md": "52914e3e120fdd22a68ac73049bff7f25d10aa56e47732ca572dbc7616431d46",
+    ".opencode/commands/onboard.md": "8d9ab5b64f68854edbc08803034d16f6ae03cfd6d1f43a22495b6e60a96bc833",
+    ".opencode/commands/workspace.md": "c32de123319e4db97444114d3f7b92ffdb238ac48e23fda7348fcddefbf4606f",
+    ".opencode/opencode.jsonc": "7d7358bc23a7c156b2971ae4da9ec48e23e43c413e8238f208ba25bb4fd57f38",
+    "tests/archive.test.mjs": "6c20d68ce2b6c572079c6cb81b8ee531163cf165df89f5b0273b6531bc1b4ddc",
+    "tests/engine.test.mjs": "26e9795c712a4f9b3d35f55a83d07a703e4e44a5856a118c1a7d3fb8c0d5e41f",
+    "tests/init.test.mjs": "b62676ee48f84bb0675d369f53fbd93a9d0ed6a36568bf016f153ad47adf779f",
+    "tests/onboard.test.mjs": "96044f6c2841d49ee9bbeb6cc68eca2a7471a6d74deadb838c734b579f15848c",
+    "tests/projects.test.mjs": "6fc478bd60751fc57bb792445176270c7bf524224620247939b9ac7b52ed9505",
+    "package.json": "8f1c7f1b1899f6b89530a3b39713a3aec5cb47b0128da7c5b491b197256d6d04",
+    "pnpm-lock.yaml": "9e7041a3759d5fde7df831c2f586a90c127163d9560f7c593506664767f12b96",
+    "AGENTS.md": "83bd84e50d84041069e5dc279faa6347809433d51ade5006369f030eadf50036",
+    "README.md": "bb58fd3b5f5bef6ccb7f3cc39589bf943e85ecc4bd5f110d26ccbac28024a832",
+    "workspace/README.md": "cb3785e97d51a4ff25c049282e23cc681135d5bf39a82aaa0cc15f59899f5c92"
+  }
+}

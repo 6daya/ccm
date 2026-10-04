@@ -87,6 +87,13 @@ try {
  const final=e.status(r.id);assert.equal(final.status,'accepted');assert.equal(final.tasks.broken.attempts.length,2);
  assert.equal(gw.requests.filter(x=>x.role==='expert').length,expertRequests,'resumption must not repeat paid expert');
  assert.equal(final.tasks.broken.checksRun[browserCheck].pass,true);assert.equal(final.tasks.broken.checksRun.boundary.pass,true);
+ const requestsBeforeArchiveRetry=gw.requests.length;
+ for(const run of [topology,final]){
+  const archive=e.archiveStatus(run.id);assert.equal(archive.status,'complete');
+  const manifest=JSON.parse(fs.readFileSync(archive.manifest,'utf8'));assert.equal(manifest.runId,run.id);assert.equal(manifest.billing.gatewayTotalUsd,null);
+  const stateBefore=e.read();assert.equal(e.complete(run.id).archive.reused,true);assert.deepEqual(e.read(),stateBefore);
+ }
+ assert.equal(gw.requests.length,requestsBeforeArchiveRetry,'Archive retry must not call models or replay accepted tasks');
  assert.ok(gw.requests.filter(x=>x.role==='expert').every(x=>x.model==='expert'&&!x.tool),'expert must be bounded and tool-less');
  assert.ok(gw.requests.filter(x=>x.role!=='expert').every(x=>x.model==='free'),'all other requests must be free');
  assert.ok(gw.requests.filter(x=>x.task).every(x=>x.project==='orders-system'&&x.contextProject==='orders-system'),'every child must receive the selected project context');
@@ -94,7 +101,7 @@ try {
  console.log('PASS: two end-to-end fixtures, module boundary, independent acceptance, restart and no paid replay');
 }finally {
  const state=fs.existsSync(path.join(consoleRoot,'.team-harness/state.json'))?new Engine(consoleRoot).read():null;
-const report={ok,browserMode:realMcp?'real-playwright-mcp':'native-mcp-protocol-fixture-jsdom-not-browser',kind:'deterministic-gateway-real-opencode-integration',notRealLLM:true,nativeDependencyCacheReused:!!nativeCache,layout:'ccm-workspace',versions:{opencode:'1.18.34',slim:'3.0.2',playwrightMcp:'0.0.83'},commands,requests:gw.requests,errors:gw.errors,state};
+const report={ok,browserMode:realMcp?'real-playwright-mcp':'native-mcp-protocol-fixture-jsdom-not-browser',kind:'deterministic-gateway-real-opencode-integration',notRealLLM:true,nativeDependencyCacheReused:!!nativeCache,layout:'ccm-workspace',automaticArchiveVerified:ok,archiveRetryWithoutModelCallsVerified:ok,versions:{opencode:'1.18.34',slim:'3.0.2',playwrightMcp:'0.0.83'},commands,requests:gw.requests,errors:gw.errors,state};
  fs.writeFileSync(path.join(root,'evaluation.json'),JSON.stringify(report,null,2));
  if(pageServer)await pageServer.close();
  await gw.close();console.log('Evaluation artifacts: '+root);
