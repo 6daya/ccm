@@ -22,5 +22,5 @@ export function describeWorkspace(engine) {
  });
  return {models:c.models,budget:c.budget,projects,projectsTruncated:c.roots.length>40,mcpIds:c.mcpIds,protectedWriteRoots:c.protectedWriteRoots||[],requiredBuilderChecks:c.requiredBuilderChecks||[],checks:c.checks,browserOrigins:c.browserOrigins||[],
   maintenance:'Read-only guidance. Script discovery does not register or execute a check. No configuration/budget/acceptance edits from task agents.',
-  businessAgent:'orchestrator',configurationFile:path.join(engine.dir,'config.json')};
+  businessAgent:'jarvis',configurationFile:path.join(engine.dir,'config.json')};
 }

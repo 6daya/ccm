@@ -1,6 +1,6 @@
 ---
 description: 对话式初始化团队工作区：环境、模型、仓库、规则与验收
-agent: workspace-mate
+agent: jarvis
 subtask: false
 ---
 

@@ -4,7 +4,7 @@
 
 已验证组合：OpenCode **1.18.34**、Slim **3.0.2**、Playwright MCP **0.0.83**，macOS ARM64。Windows 做了路径、命令和落盘兼容处理，但尚未实机验证。真实 GLM/Opus 质量与费用尚未实测。
 
-> 当前是 harness 基线与 onboarding 原型。推荐的统一 ccm-mate 协作架构见 [设计决策](docs/ccm-collaboration.md)，其中标为待实现的能力尚未上线。
+> 当前是 harness 基线与 onboarding 原型。推荐的统一 Jarvis 协作架构见 [设计决策](docs/ccm-collaboration.md)，其中标为待实现的能力尚未上线。
 
 ## 开始使用
 
@@ -15,11 +15,11 @@ cd /path/to/ccm
 opencode
 ```
 
-首次先通过 OpenCode `/models` 选择公司已配置的免费模型，然后输入 **`/onboard`**。原生 `workspace-mate` 会分步询问模型、仓库、内部 MCP 和验收规则，替你安装依赖、生成配置并调用校验脚本。它的 Markdown 命令/agent 在没有 `node_modules` 时就能被 OpenCode 识别。
+打开后默认助手是 **Jarvis（贾维斯）**，直接说“初始化这个工作区”。首次使用的当前模型由公司既有 OpenCode 配置决定；可先通过 `/models` 选择已配置的免费模型。Jarvis 会分步询问模型、仓库、内部 MCP 和验收规则，替你安装依赖、生成配置并调用校验脚本。`/onboard` 是可选快捷入口；Markdown agent 和启动配置在没有 `node_modules` 时也能被 OpenCode 识别。
 
 需要已有公司 OpenCode provider、Node 24.15+（或 Node 22.22.2+）、pnpm 和 ripgrep。依赖安装使用现有公司 registry，不切换公共源、不安装系统软件。向导不会询问 API key。免费模型未知之前，启动向导的当前模型由 OpenCode 的选择决定，不能提前保证免费。
 
-首次配置完成后退出并重新打开一次 `opencode`，编排插件在启动时加载。之后直接用默认主代理聊天，不需要 `--agent`。**`/workspace`** 可检查模型、项目规则和验收缺失项；它使用免费的只读向导，业务工作交给 `orchestrator`。执行向导命令后如果当前 agent 是 workspace-mate，用 Tab 切回 orchestrator，或开始默认主代理新会话。
+首次配置完成后退出并重新打开一次 `opencode`，编排插件在启动时加载。之后仍由默认 Jarvis 接待，直接描述业务任务或询问项目规则，不需要 `--agent` 或切换 agent。**`/workspace`** 可作为检查模型、规则和验收缺失项的快捷入口，仍使用 Jarvis；配置解释是只读的，业务执行通过 harness 的受控子任务完成。
 
 首次向导会展示要持久化的保护边界、预算及具体验收命令，请你确认后才应用。仓库已有的 AGENTS.md/package.json 用来提出规则和检查候选；不会自动执行未知脚本，也不会将脚本名称当作验证通过。现阶段已初始化后的 `/workspace` 能解释规则并提出修改建议，**尚不能对话式应用配置更新或自动管理 Git worktree**。
 

@@ -33,7 +33,7 @@ const env={...process.env,XDG_CONFIG_HOME:path.join(home,'config'),XDG_DATA_HOME
 const commands=[];
 async function run(label,message,session) {
  console.log('Running '+label+' through real OpenCode + Slim');
- const argv=['run','--print-logs','--log-level','INFO','--format','json','--dir',workspace,'--agent','orchestrator','--title',label,...session?['--session',session]:[],message];
+ const argv=['run','--print-logs','--log-level','INFO','--format','json','--dir',workspace,'--agent','jarvis','--title',label,...session?['--session',session]:[],message];
  const start=Date.now();let stdout='',stderr='';
  const child=spawn(binary,argv,{env,cwd:workspace,stdio:['ignore','pipe','pipe']});
  child.stdout.on('data',c=>stdout+=c);child.stderr.on('data',c=>stderr+=c);

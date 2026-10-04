@@ -1,0 +1,13 @@
+{
+  "ok": true,
+  "date": "2026-10-04",
+  "kind": "real-opencode-jarvis-startup-and-permission-smoke",
+  "opencode": "1.18.34",
+  "realCompanyModelTested": false,
+  "beforeDependenciesDefaultAgent": "jarvis",
+  "afterInitDefaultAgent": "jarvis",
+  "freeModelRouting": true,
+  "constrainedTaskDispatch": true,
+  "installShellAfterInit": false,
+  "providerPreserved": true
+}

@@ -1,30 +1,32 @@
-✔ scope blocks common-module insertion and preserves external user edits (71.810459ms)
-✔ independent acceptance refuses false verdict, then accepts check-bound correct implementation (223.125625ms)
-✔ paid escalation requires evidence, known prices and reserve; cannot be used for search (38.8635ms)
-✔ budget reservation protects concurrent paid dispatches (47.188916ms)
-✔ interrupted paid attempts cannot retry until reconciled; attempts are distinct (109.036666ms)
-✔ free interrupted task resumes from disk without replaying finished work (123.894667ms)
-✔ stale evidence, missing checks, and changed checked artifacts reject acceptance (170.024625ms)
-✔ protected config, path traversal and symlinks are refused (24.51675ms)
-✔ cancellation blocks already prepared calls and late writes (51.92925ms)
-✔ usage is idempotent and counts cache and reasoning at configured prices (87.461958ms)
-✔ main agent cannot grant protected module writes or omit mandatory checks (24.681208ms)
-✔ parallel writers are serialized and stale prepared args cannot be changed (74.367458ms)
-✔ unconfigured public MCP source and broad paid evidence packet are blocked (33.151583ms)
-✔ review from an old attempt cannot approve a replacement candidate (187.353ms)
-✔ Playwright MCP accepts only registered step order/arguments and binds actual receipts (191.7375ms)
-✔ a failed MCP output cannot be replaced by a passing model verdict (199.59875ms)
-✔ init preserves JSONC comments, provider credential references and internal MCP config (17.446042ms)
-✔ init refuses two orchestration profiles and ambiguous configs before changing files (4.854708ms)
-✔ Playwright MCP init generates a direct Node command without Python or cmd wrappers (9.944042ms)
-✔ fresh downloaded workspace discovers bootstrap with no node_modules and no external imports (269.745ms)
-✔ workspace guide discovers rules and check candidates without executing scripts or starting runs (19.018208ms)
-✔ workspace guide refuses symlinked project rules without reading the target (14.24475ms)
-ℹ tests 22
+✔ scope blocks common-module insertion and preserves external user edits (70.326125ms)
+✔ independent acceptance refuses false verdict, then accepts check-bound correct implementation (201.978334ms)
+✔ paid escalation requires evidence, known prices and reserve; cannot be used for search (34.922708ms)
+✔ budget reservation protects concurrent paid dispatches (41.398584ms)
+✔ interrupted paid attempts cannot retry until reconciled; attempts are distinct (101.58125ms)
+✔ free interrupted task resumes from disk without replaying finished work (111.534709ms)
+✔ stale evidence, missing checks, and changed checked artifacts reject acceptance (149.577292ms)
+✔ protected config, path traversal and symlinks are refused (22.787ms)
+✔ cancellation blocks already prepared calls and late writes (50.121541ms)
+✔ usage is idempotent and counts cache and reasoning at configured prices (93.916917ms)
+✔ main agent cannot grant protected module writes or omit mandatory checks (23.663541ms)
+✔ parallel writers are serialized and stale prepared args cannot be changed (59.097458ms)
+✔ unconfigured public MCP source and broad paid evidence packet are blocked (26.986333ms)
+✔ review from an old attempt cannot approve a replacement candidate (176.443667ms)
+✔ Playwright MCP accepts only registered step order/arguments and binds actual receipts (192.934708ms)
+✔ a failed MCP output cannot be replaced by a passing model verdict (179.36725ms)
+✔ init preserves JSONC comments, provider credential references and internal MCP config (20.672375ms)
+✔ init refuses two orchestration profiles and ambiguous configs before changing files (4.702958ms)
+✔ Playwright MCP init generates a direct Node command without Python or cmd wrappers (9.68275ms)
+✔ Jarvis startup profile coexists with company config and remains immutable after init (13.000291ms)
+✔ non-bootstrap project profile is never silently ignored (8.359208ms)
+✔ fresh downloaded workspace discovers bootstrap with no node_modules and no external imports (474.160625ms)
+✔ workspace guide discovers rules and check candidates without executing scripts or starting runs (27.129625ms)
+✔ workspace guide refuses symlinked project rules without reading the target (14.949708ms)
+ℹ tests 24
 ℹ suites 0
-ℹ pass 22
+ℹ pass 24
 ℹ fail 0
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 1703.653333
+ℹ duration_ms 1583.086708

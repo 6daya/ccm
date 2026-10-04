@@ -1,6 +1,6 @@
 ---
 description: 查看工作区模型、项目、规则和验收配置，解释或提出改进
-agent: workspace-mate
+agent: jarvis
 subtask: false
 ---
 

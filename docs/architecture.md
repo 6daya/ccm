@@ -2,7 +2,7 @@
 
 ```mermaid
 flowchart LR
- U[用户 / OpenCode CLI] --> C[免费 orchestrator]
+ U[用户 / OpenCode CLI] --> C[免费 Jarvis]
  C --> P[Harness 合同与预算检查]
  P --> T[OpenCode 原生 task / Slim 跟踪]
  T --> F[免费 scout / planner / builder / verifier]

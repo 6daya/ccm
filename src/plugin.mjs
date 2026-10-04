@@ -1,7 +1,7 @@
 import {tool} from '@opencode-ai/plugin';
 import {OhMyOpenCodeLite} from 'oh-my-opencode-slim';
 import {Engine} from './engine.mjs';
-import {coordinator,worker,workspaceMate} from './prompts.mjs';
+import {coordinator,worker} from './prompts.mjs';
 import {describeWorkspace} from './workspace.mjs';
 const z=tool.schema;
 const stringify=x=>JSON.stringify(x,null,2);
@@ -9,7 +9,6 @@ const rootTools=['harness_start','harness_result','harness_status','harness_work
 const childTools=['harness_search','harness_read','harness_evidence','harness_write','harness_check'];
 export default async function Harness(ctx) {
   const e=new Engine(ctx.directory),c=e.config;
-  const sessionAgents=new Map();
   const browserMcpIds=[...new Set(c.checks.filter(x=>x.type==='mcp').map(x=>x.mcpId))];
   const slim=await OhMyOpenCodeLite(ctx);
   const owner=(runID,session)=>{const r=e.status(runID);if(r.session!==session)throw Error('Run belongs to another primary session; resume that session');return r};
@@ -63,14 +62,15 @@ export default async function Harness(ctx) {
     async config(config) {
       if((config.plugin||[]).some(p=>/oh-my-opencode/.test(String(p))))throw Error('Remove the separate orchestration plugin; harness composes pinned Slim itself');
       await slim.config?.(config);
-      config.default_agent='orchestrator';config.model=c.models.free.id;config.small_model=c.models.free.id;
+      config.default_agent='jarvis';config.model=c.models.free.id;config.small_model=c.models.free.id;
       config.autoupdate=false;config.share='disabled';
       config.agent??={};
       const permission=allowed=>({'*':'deny',...Object.fromEntries(allowed.map(t=>[t,'allow']))});
-      config.agent.orchestrator={mode:'primary',model:c.models.free.id,prompt:coordinator,permission:{...permission(rootTools),task:Object.fromEntries(['scout','planner','builder','verifier',...(c.models.expert?['expert']:[])].map(r=>['th-'+r,'allow']))},steps:c.limits.rootSteps};
-      config.agent['workspace-mate']={mode:'primary',model:c.models.free.id,description:'免费工作区规则与流程向导（只读）',prompt:workspaceMate,permission:permission(['harness_workspace','harness_status','question']),steps:12};
+      config.agent.jarvis={mode:'primary',model:c.models.free.id,description:'Jarvis（贾维斯）：CCM 项目与任务助手',prompt:coordinator,permission:{...permission(rootTools),task:Object.fromEntries(['scout','planner','builder','verifier',...(c.models.expert?['expert']:[])].map(r=>['th-'+r,'allow']))},steps:c.limits.rootSteps};
+      // Preserve old primary sessions and evaluation scripts without another scheduler.
+      config.agent.orchestrator={...config.agent.jarvis,hidden:true,description:'Compatibility alias for Jarvis'};
       config.command??={};
-      for(const name of ['onboard','workspace'])config.command[name]={description:name==='onboard'?'检查已完成的工作区初始化':'解释项目规则、模型与验收配置',agent:'workspace-mate',subtask:false,template:'Inspect the initialized workspace via harness_workspace. Explain rules and missing prerequisites; propose changes only, do not apply them. User request: $ARGUMENTS'};
+      for(const name of ['onboard','workspace'])config.command[name]={description:name==='onboard'?'检查已完成的工作区初始化':'解释项目规则、模型与验收配置',agent:'jarvis',subtask:false,template:'Inspect the initialized workspace via harness_workspace. Explain rules and missing prerequisites; propose changes only, do not apply them. User request: $ARGUMENTS'};
       for(const role of ['scout','planner','builder','verifier','expert']) {
         if(role==='expert'&&!c.models.expert){config.agent['th-expert']={disable:true};continue}
         const allowed=role==='expert'?[]:childTools.filter(t=>t!=='harness_write'||role==='builder').filter(t=>t!=='harness_check'||['builder','verifier'].includes(role));
@@ -80,12 +80,11 @@ export default async function Harness(ctx) {
         config.agent['th-'+role]={mode:'subagent',hidden:true,description:'Harness '+role,model:role==='expert'?c.models.expert.id:c.models.free.id,prompt:worker(role),permission:p,steps:role==='expert'?1:c.limits.workerSteps};
       }
       // All alternate entry points and Slim agents disabled, avoiding unmetered model routes.
-      for(const name of Object.keys(config.agent))if(!['orchestrator','workspace-mate','th-scout','th-planner','th-builder','th-verifier','th-expert','title','summary','compaction'].includes(name))config.agent[name]={...config.agent[name],disable:true};
+      for(const name of Object.keys(config.agent))if(!['jarvis','orchestrator','th-scout','th-planner','th-builder','th-verifier','th-expert','title','summary','compaction'].includes(name))config.agent[name]={...config.agent[name],disable:true};
       for(const name of ['title','summary','compaction'])config.agent[name]={...config.agent[name],model:c.models.free.id};
       for(const [id,mcp] of Object.entries(config.mcp||{}))if(!c.mcpIds.includes(id)&&!browserMcpIds.includes(id))mcp.enabled=false;
     },
     async 'tool.execute.before'(input,output) {
-      if(sessionAgents.get(input.sessionID)==='workspace-mate'&&!['harness_workspace','harness_status','question'].includes(input.tool))throw Error('Workspace guide is read-only; switch to orchestrator for business tasks');
       const x=await lookup(input.sessionID);
       if(browserMcpIds.some(id=>input.tool.startsWith(id+'_'))){e.mcpBefore(input.sessionID,input.tool,output.args);return}
       if(input.tool==='task') {e.dispatch(input.sessionID,output.args);await slim['tool.execute.before']?.(input,output);return}
@@ -108,7 +107,6 @@ export default async function Harness(ctx) {
       }
     },
     async 'chat.params'(input,output) {
-      sessionAgents.set(input.sessionID,input.agent);
       const x=await lookup(input.sessionID);
       const actual=input.model.providerID+'/'+input.model.id;
       const expected=x?.a.model||c.models.free.id;
