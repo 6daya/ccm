@@ -6,6 +6,8 @@ CCM 0.3.0 是面向 **OpenCode V2** 的本地工作台。你在 CCM 根目录启
 
 [完整新手指引](docs/getting-started.md) · [0.3.0 变更与证据](docs/release-0.3.0.md) · [架构与适配边界](docs/architecture.md) · [司内质量/费用试跑](docs/company-pilot.md) · [内部 MCP 验证](docs/internal-mcp-validation.md) · [后续计划](docs/remaining-work.md)
 
+继续开发 CCM 自身：从 [工程维护总览](docs/maintenance/README.md) 开始，再选择 [TODO](docs/maintenance/TODO.md) 中的一项。更换开发会话可直接使用 [接续说明](docs/maintenance/HANDOFF.md)。这些资料与源码一起提交；交付 ZIP/验证文件是固定版本快照，不能代替最新 Git 状态。
+
 ## 开始使用
 
 下载 `ccm-0.3.0.zip`，或 clone 交付分支（main 仍不是交付版本）：

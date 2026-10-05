@@ -1,5 +1,7 @@
 # CCM 0.3.0：核心与 OpenCode V2 入口
 
+继续开发时先读 [工程维护总览](maintenance/README.md)，其中整理了设计依据、源码/测试入口和维护边界；任务统一记录在 [TODO](maintenance/TODO.md)。本页描述当前运行机制。
+
 ```mermaid
 flowchart LR
  U[用户与 Jarvis 沟通] --> A[OpenCode V2 适配]
