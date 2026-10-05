@@ -1,11 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {spawn,spawnSync} from 'node:child_process';
-import {createRequire} from 'node:module';
 import assert from 'node:assert/strict';
 import {defaults,init,packageRoot} from '../src/init.mjs';
 import {Engine} from '../src/engine.mjs';
-import {fixtures,domFixture} from './fixtures.mjs';
+import {fixtures} from './fixtures.mjs';
 import {serve,browserCheck as mcpCheck} from './case-server.mjs';
 import {gateway} from './gateway.mjs';
 const arg=k=>{const i=process.argv.indexOf('--'+k);return i<0?undefined:process.argv[i+1]};
@@ -14,11 +13,11 @@ const root=path.resolve(arg('out')||path.join(packageRoot,'eval-results',new Dat
 if(fs.existsSync(path.join(root,'ccm')))throw Error('Evaluation output already contains CCM. Use a fresh --out directory; existing files will not be overwritten.');
 fs.mkdirSync(root,{recursive:true});
 const consoleRoot=path.join(root,'ccm');
-fs.cpSync(packageRoot,consoleRoot,{recursive:true,filter:p=>!['node_modules','.git','.team-harness','eval-results','workspace','artifacts','opencode.json','opencode.jsonc'].includes(path.relative(packageRoot,p).split(path.sep)[0])});
+fs.cpSync(packageRoot,consoleRoot,{recursive:true,filter:p=>!['node_modules','.git','.ccm','eval-results','workspace','artifacts','opencode.json','opencode.jsonc'].includes(path.relative(packageRoot,p).split(path.sep)[0])});
 fs.symlinkSync(fs.realpathSync(path.join(packageRoot,'node_modules')),path.join(consoleRoot,'node_modules'),'junction');
 const workspace=path.join(consoleRoot,'workspace/web');fs.mkdirSync(workspace,{recursive:true});
 const mcpUrl=arg('playwright-mcp-url');
-const realMcp=!process.argv.includes('--mcp-fixture')||!!mcpUrl;
+if(process.argv.includes('--mcp-fixture'))throw Error('V2 acceptance requires the real Playwright MCP; DOM simulation removed');
 fixtures(workspace);
 const topologyFiles=[path.join(workspace,'repos/web/ARCHITECTURE.md')];
 for(const name of ['orders','payments']){
@@ -31,33 +30,23 @@ for(const repo of ['web','orders','payments'].map(name=>path.join(consoleRoot,'w
   const result=spawnSync('git',args,{cwd:repo,encoding:'utf8'});if(result.status!==0)throw Error(result.stderr);
  }
 }
-if(!realMcp){const slimRequire=createRequire(import.meta.resolve('oh-my-opencode-slim'));domFixture(workspace,slimRequire.resolve('jsdom'))}
 const browserCheck='playwright';
 const pageServer=await serve(workspace);
 const gw=await gateway(workspace,browserCheck,{project:'orders-system',topologyFiles}),config=defaults(consoleRoot,'eval/free');
 config.models.expert={id:'eval/expert',free:false,price:{input:10,output:50,cacheRead:1,cacheWrite:10}};
 config.projects=[{id:'orders-system',roots:['workspace/web','workspace/orders','workspace/payments'],checkIds:['boundary',browserCheck],requiredBuilderChecks:['boundary',browserCheck]}];
 config.protectedWriteRoots=['workspace/web/common','workspace/web/checks'];config.requiredBuilderChecks=[];
-config.checks=[{id:'boundary',cwd:'workspace/web',argv:[process.execPath,'checks/boundary.mjs']},mcpCheck(pageServer.origin,'playwright',!realMcp)];
+config.checks=[{id:'boundary',cwd:'workspace/web',argv:[process.execPath,'checks/boundary.mjs']},mcpCheck(pageServer.origin,'playwright',false)];
 if(pageServer)config.browserOrigins=[pageServer.origin];
-const mcpCommand=realMcp?[process.execPath,path.join(packageRoot,'node_modules/@playwright/mcp/cli.js'),'--headless','--isolated','--no-webmcp','--output-dir',path.join(workspace,'artifacts/mcp'),...(process.env.HARNESS_EVAL_BROWSER?['--executable-path',process.env.HARNESS_EVAL_BROWSER]:[])]:[process.execPath,path.join(packageRoot,'eval/mcp-fixture.mjs'),workspace];
-fs.writeFileSync(path.join(consoleRoot,'opencode.json'),JSON.stringify({$schema:'https://opencode.ai/config.json',provider:{eval:{npm:'@ai-sdk/openai-compatible',name:'Deterministic local test gateway (not LLM)',options:{baseURL:gw.url,apiKey:'local-test-not-a-secret'},models:{free:{name:'free fixture',tool_call:true,limit:{context:128000,output:8192}},expert:{name:'expert fixture',tool_call:true,limit:{context:128000,output:8192}}}}},enabled_providers:['eval'],...({mcp:{playwright:mcpUrl?{type:'remote',url:mcpUrl,enabled:true}:{type:'local',command:mcpCommand,enabled:true}}})},null,2));
+const mcpCommand=[process.execPath,path.join(packageRoot,'node_modules/@playwright/mcp/cli.js'),'--headless','--isolated','--no-webmcp','--output-dir',path.join(workspace,'artifacts/mcp'),...(process.env.HARNESS_EVAL_BROWSER?['--executable-path',process.env.HARNESS_EVAL_BROWSER]:[])];
+fs.writeFileSync(path.join(consoleRoot,'opencode.json'),JSON.stringify({model:'eval/free',providers:{eval:{package:'aisdk:@ai-sdk/openai-compatible',settings:{baseURL:gw.url,apiKey:'local-test-not-a-secret'},models:{free:{name:'free fixture',capabilities:{tools:true},limit:{context:128000,output:8192}},expert:{name:'expert fixture',capabilities:{tools:true},limit:{context:128000,output:8192}}}}},mcp:{servers:{playwright:mcpUrl?{type:'remote',url:mcpUrl,disabled:false,codemode:false}:{type:'local',command:mcpCommand,disabled:false,codemode:false}}}},null,2));
 init(consoleRoot,config);
 const home=path.join(root,'isolated');fs.mkdirSync(home,{recursive:true});
-const nativeCache=arg('native-config-cache');
-if(nativeCache){
- const cache=path.resolve(nativeCache),pkg=JSON.parse(fs.readFileSync(path.join(cache,'package.json'),'utf8'));
- assert.equal(pkg.dependencies?.['@opencode-ai/plugin'],'1.18.34','Use an existing official OpenCode 1.18.34 native config cache');
- for(const dir of [path.join(consoleRoot,'.opencode'),path.join(home,'config/opencode')]){
-  fs.mkdirSync(dir,{recursive:true});for(const file of ['package.json','package-lock.json'])fs.copyFileSync(path.join(cache,file),path.join(dir,file));
-  fs.symlinkSync(fs.realpathSync(path.join(cache,'node_modules')),path.join(dir,'node_modules'),'junction');
- }
-}
-const env={...process.env,PATH:path.dirname(process.execPath)+path.delimiter+path.dirname(path.resolve(binary))+path.delimiter+process.env.PATH,XDG_CONFIG_HOME:path.join(home,'config'),XDG_DATA_HOME:path.join(home,'data'),XDG_CACHE_HOME:path.join(home,'cache'),XDG_STATE_HOME:path.join(home,'state'),OPENCODE_DISABLE_MODELS_FETCH:'true',OPENCODE_DISABLE_DEFAULT_PLUGINS:'true',OPENCODE_DISABLE_SHARE:'true',npm_config_cache:path.join(home,'npm-cache')};
+const env={...process.env,PWD:consoleRoot,PATH:path.dirname(process.execPath)+path.delimiter+path.dirname(path.resolve(binary))+path.delimiter+process.env.PATH,XDG_CONFIG_HOME:path.join(home,'config'),XDG_DATA_HOME:path.join(home,'data'),XDG_CACHE_HOME:path.join(home,'cache'),XDG_STATE_HOME:path.join(home,'state'),OPENCODE_DISABLE_MODELS_FETCH:'true',OPENCODE_DISABLE_SHARE:'true',npm_config_cache:path.join(home,'npm-cache')};
 const commands=[];
 async function run(label,message,session) {
- console.log('Running '+label+' through real OpenCode + Slim');
- const argv=['run','--print-logs','--log-level','INFO','--format','json','--dir',consoleRoot,'--title',label,...session?['--session',session]:[],message];
+ console.log('Running '+label+' through real OpenCode V2 native subagents');
+ const argv=['run','--standalone','--print-logs','--log-level','info','--format','json','--model','eval/free','--agent','jarvis','--title',label,...session?['--session',session]:[],message];
  const start=Date.now();let stdout='',stderr='';
  const child=spawn(binary,argv,{env,cwd:consoleRoot,stdio:['ignore','pipe','pipe']});
  child.stdout.on('data',c=>stdout+=c);child.stderr.on('data',c=>stderr+=c);
@@ -100,8 +89,8 @@ try {
  assert.equal(gw.errors.length,0);ok=true;
  console.log('PASS: two end-to-end fixtures, module boundary, independent acceptance, restart and no paid replay');
 }finally {
- const state=fs.existsSync(path.join(consoleRoot,'.team-harness/state.json'))?new Engine(consoleRoot).read():null;
-const report={ok,browserMode:realMcp?'real-playwright-mcp':'native-mcp-protocol-fixture-jsdom-not-browser',kind:'deterministic-gateway-real-opencode-integration',notRealLLM:true,nativeDependencyCacheReused:!!nativeCache,layout:'ccm-workspace',automaticArchiveVerified:ok,archiveRetryWithoutModelCallsVerified:ok,versions:{opencode:'1.18.34',slim:'3.0.2',playwrightMcp:'0.0.83'},commands,requests:gw.requests,errors:gw.errors,state};
+ const state=fs.existsSync(path.join(consoleRoot,'.ccm/state.json'))?new Engine(consoleRoot).read():null;
+const report={ok,browserMode:'real-playwright-mcp',kind:'deterministic-gateway-real-opencode-integration',notRealLLM:true,isolatedFreshNativeCache:true,layout:'ccm-workspace',automaticArchiveVerified:ok,archiveRetryWithoutModelCallsVerified:ok,versions:{opencode:'2.0.23',plugin:'2.0.23',runtime:'v2-only',playwrightMcp:'0.0.83'},commands,requests:gw.requests,errors:gw.errors,state};
  fs.writeFileSync(path.join(root,'evaluation.json'),JSON.stringify(report,null,2));
  if(pageServer)await pageServer.close();
  await gw.close();console.log('Evaluation artifacts: '+root);

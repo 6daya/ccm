@@ -1,0 +1,243 @@
+{
+  "version": "0.3.0",
+  "date": "2026-10-06",
+  "baseCommit": "65063531b744a225380f1815b6a9bc375f32d56c",
+  "platform": "darwin",
+  "arch": "arm64",
+  "privateRuntimeDirectory": ".ccm",
+  "globalOpenCode": {
+    "version": "2.0.23",
+    "package": "@opencode/cli-darwin-arm64",
+    "officialRegistryIntegrityMatches": true,
+    "binarySha256": "e7bef8c36d9ea0cbc5253bb3367f2c286ea68fed9ea827a341760186b9e12831",
+    "v1BackupPreserved": true,
+    "plainTuiLaunchVerified": true,
+    "providerKeysNotEdited": true,
+    "otherSystemRuntimesInstalled": false
+  },
+  "tests": {
+    "total": 57,
+    "passed": 57,
+    "failed": 0,
+    "output": "validation-0.3.0-tests.txt"
+  },
+  "bootstrapAndNativeForms": {
+    "ok": true,
+    "opencode": "2.0.23",
+    "kind": "real-v2-bootstrap-and-native-form-smoke",
+    "notRealLLM": true,
+    "dependenciesAbsentBeforeOnboarding": true,
+    "defaultJarvisBootstrap": true,
+    "nativeProviderConfiguration": true,
+    "providerReferencePreserved": true,
+    "modelsCommandVerified": true,
+    "bootstrapAgentBackedUp": true,
+    "restartRequired": true,
+    "registrationBlockedBeforeFormReply": true,
+    "nativeFormReplyRegistersExactProject": true,
+    "runtimePlanNativeConfirmation": true,
+    "approvedRuntimeProbeOnly": true,
+    "systemSoftwareInstalled": false,
+    "requests": 8
+  },
+  "dependencyInstall": {
+    "frozenLockfile": true,
+    "ignoreScripts": true,
+    "isolatedDirectory": true,
+    "packages": 279,
+    "reusedPackages": 279,
+    "downloadedPackages": 0,
+    "supplyPolicyPassed": true,
+    "wholeMachineColdInstall": false,
+    "offlineAttempt": "Stopped after sandbox DNS failures during registry metadata checks; not evidence of offline support or company connectivity"
+  },
+  "integration": {
+    "ok": true,
+    "kind": "deterministic-gateway-real-opencode-integration",
+    "notRealLLM": true,
+    "browserMode": "real-playwright-mcp",
+    "isolatedFreshNativeCache": true,
+    "versions": {
+      "opencode": "2.0.23",
+      "plugin": "2.0.23",
+      "runtime": "v2-only",
+      "playwrightMcp": "0.0.83"
+    },
+    "commands": [
+      {
+        "label": "topology",
+        "exit": 0,
+        "ms": 1225
+      },
+      {
+        "label": "observability-phase1",
+        "exit": 0,
+        "ms": 1473
+      },
+      {
+        "label": "observability-resumed",
+        "exit": 0,
+        "ms": 3830
+      }
+    ],
+    "requestCount": 72,
+    "requestsByRole": {
+      "coordinator": 51,
+      "scout": 4,
+      "verifier": 11,
+      "builder": 5,
+      "expert": 1
+    },
+    "expertMaxTokens": 4000,
+    "runtimeSourceSnapshotMatches": true,
+    "runtimeFilesChangedAfterIntegration": [],
+    "archives": [
+      {
+        "runId": "7c553218-2635-461b-aba6-f97b272134bc",
+        "project": "orders-system",
+        "status": "complete",
+        "reportSha256": "b0f85353b787f8c6e46443cb89f57519440530a713368772b22a921ebaaea151",
+        "nativeCompleteReturnedPaths": true,
+        "sourceCount": 4,
+        "checkCount": 0,
+        "receiptCount": 2
+      },
+      {
+        "runId": "097b3891-883a-45ff-bc38-fc868fa395c8",
+        "project": "orders-system",
+        "status": "complete",
+        "reportSha256": "7b84519a10d4d9a55a8b0efa989bed64b1c4f47014ea673f87d0ddf19ab6dc79",
+        "nativeCompleteReturnedPaths": true,
+        "sourceCount": 2,
+        "checkCount": 2,
+        "receiptCount": 6
+      }
+    ],
+    "archiveRetryModelRequestDelta": 0,
+    "acceptedTasksAndPaidExpertNotReplayed": true,
+    "screenshot": "evidence/orders-observability-0.3.0.png",
+    "screenshotSha256": "7314e08459c53e73d00c0eced829dce4e5cd0d555e74478020c19beedafa6039"
+  },
+  "coldStartup": {
+    "status": "v2-local-native-cache-fresh-passed-company-full-install-pending",
+    "diagnostic": {
+      "date": "2026-10-05T16:12:16.567Z",
+      "opencode": "opencode v2.0.23",
+      "notRealLLM": true,
+      "harnessLoaded": false,
+      "providerCredentialsCopied": false,
+      "timeoutMs": 45000,
+      "registryChanged": false,
+      "runs": [
+        {
+          "label": "native-only",
+          "argv": [
+            "run",
+            "--standalone",
+            "--model",
+            "diagnostic/free",
+            "--print-logs",
+            "--log-level",
+            "debug",
+            "--format",
+            "json",
+            "Reply with diagnostic fixture."
+          ],
+          "exit": 0,
+          "signal": null,
+          "ms": 325,
+          "timedOut": false,
+          "modelRequests": 2,
+          "configDependencies": false,
+          "projectDependencies": false
+        },
+        {
+          "label": "native-local-plugin",
+          "argv": [
+            "run",
+            "--standalone",
+            "--model",
+            "diagnostic/free",
+            "--print-logs",
+            "--log-level",
+            "debug",
+            "--format",
+            "json",
+            "Reply with diagnostic fixture."
+          ],
+          "exit": 0,
+          "signal": null,
+          "ms": 320,
+          "timedOut": false,
+          "modelRequests": 2,
+          "configDependencies": false,
+          "projectDependencies": false
+        }
+      ],
+      "registry": {
+        "pnpmReference": "https://registry.npmjs.org/",
+        "scope": "pnpm reference only; the native loader effective/scoped registry is not observed",
+        "exit": 0
+      }
+    },
+    "ccmDependenciesAndChromeAlreadyInstalled": true,
+    "v1WaitRootCause": "unresolved historical evidence"
+  },
+  "companyValidation": {
+    "status": "not-run",
+    "realModelQuality": null,
+    "actualGatewayBilling": null,
+    "internalMcpRealVerification": false
+  },
+  "limitations": [
+    "V2 2.0.23/macOS ARM64 only integration-tested",
+    "no actual runtime installation performed",
+    "paid WebSocket unsupported",
+    "missing terminal idle remains unresolved; no blind replay",
+    "no Windows live test",
+    "internal MCP excerpts agent-supplied; only preapproved readonly endpoints",
+    "V1 state migration and other coding agent adapters not implemented"
+  ],
+  "excludedInitialPortingRun": {
+    "reason": "Inherited PWD entered a different root and default model instead of local gateway",
+    "notUsedForQualityOrCostClaims": true,
+    "billing": "unknown"
+  },
+  "sourceSha256": {
+    "src/archive.mjs": "0725bcc70d360841af084fc89888a0a987bd8b602899a0f667eb9b7e79982afb",
+    "src/defaults.mjs": "6ec4276b3157c8e55786e50faad2769e95dafd415a70d1994fda1563121307c6",
+    "src/engine.mjs": "f0dcc46e2bc7ce4ffc6c226d3d699098f058750bf85807dd21723a652ecc82f0",
+    "src/environment.mjs": "7170d7195aded7b7d1d7117bb4ecaa5baed62b078de8db747c279be303060c3a",
+    "src/init.mjs": "92f56b225f75d885c026beb206dd7a368f3eacf9c47429a5877c6dc599a7decc",
+    "src/opencode-models.mjs": "400a17ecfe918525af3a258e38e7509736db6bf24a8f97866b51452e34f250d1",
+    "src/plugin.mjs": "9bc52d95c746a9623f9c09f38af8906cc034ec87b2144df35bd7a5ada8c0ea81",
+    "src/projects.mjs": "008e32da2dc2220c830ffb4ad5fb70ffa15382108577a5876ff1e96297d72196",
+    "src/prompts.mjs": "07921e76920d2446b545ca98b6fee85e0926e95b6744d5a4a050af1d1abc0288",
+    "src/runtime.mjs": "fcf10cf77dfb62e804a275e4ded782268a5731ef74b3f601e56f503138a1ea08",
+    "src/sensitive-paths.mjs": "a880cf06ad04e7df1334a6d4f95d1573b88ad515ede533111ced8b95b91565ca",
+    "src/workspace.mjs": "42a1bd132e3d77c0528c6cb7fdaaf089e4372bfc085c312f3cdb21b8f02361eb",
+    "bin/cli.mjs": "a7ea3b00cfdc65fdc7a860650dd1e5e3849fb9bfc1f0319c6e8611ccc400bb51",
+    "bin/onboard.mjs": "2f2afa49cc38c29d5f296d5aab64e44eb0778182b078727fddae98067589ec6d",
+    "eval/case-server.mjs": "d92fc93c2e48e37b2e2e84ecce48ae592454a2705a829cdd22b89fc9dbe9f0e8",
+    "eval/diagnose-startup.mjs": "e68e6f78e1faa162c21b73702b7b7c82e88247fb8242e5ab3ea9e804168c0c06",
+    "eval/fixtures.mjs": "520b6ca183b07d5a5f433da6266bde1ef668097bc8f6190dafa0303b1eb7dd72",
+    "eval/gateway.mjs": "fc3a9b8d3e9616df9b25b9ea134509fe26d2de8f8c07050a6d8fbe2160736365",
+    "eval/mcp-fixture.mjs": "e50a451d9a937cfb1441260f7f103de1e9abb19b8ff3eca586e98977c25f94c6",
+    "eval/run.mjs": "faefd5b8d20139c39d99d070832e76b077c8df99187eb6c4f6f63c24ee11c1a9",
+    ".opencode/agents/jarvis.md": "961193b10f187f603f1facaeb0fdf2bb2daf07513537980860081554f3c6ea47",
+    ".opencode/commands/onboard.md": "8d9ab5b64f68854edbc08803034d16f6ae03cfd6d1f43a22495b6e60a96bc833",
+    ".opencode/commands/workspace.md": "c32de123319e4db97444114d3f7b92ffdb238ac48e23fda7348fcddefbf4606f",
+    ".opencode/opencode.jsonc": "651c650f1664e7ec2a52bf245b2274db4d0b79df10672c6c5ac222ac23007dde",
+    "tests/archive.test.mjs": "6c20d68ce2b6c572079c6cb81b8ee531163cf165df89f5b0273b6531bc1b4ddc",
+    "tests/engine.test.mjs": "ba1aea95f7ad06bdddcf124d93f031ec8285d75ef57941fb76e58a08ab4f8c91",
+    "tests/init.test.mjs": "1b3db0a8d048b398b09a966ba5c10a922b4b06eb0ab81177dc9bc59e9db670ad",
+    "tests/onboard.test.mjs": "12b4bef3f22e667936d33926e4db02a12151ce2295b865a5c9428dac58f29d51",
+    "tests/plugin-v2.test.mjs": "85889f282554073b110f357e2380bde6a13907a158bb33087547492653d63ab1",
+    "tests/projects.test.mjs": "aa3c3f41b20d9e0ee6acef82eb9553fa58c1c6803a7b6925f95a3b3a451e0108",
+    "package.json": "00c4a2fdbfd9a98e0d5d1f907dde1cb0e31ced3e61cd8c8f199fcfcf1c99842b",
+    "pnpm-lock.yaml": "eacd05a0e0199a3f1ebb23f7e62b1e1e993449760634d953138be1be84a747a8",
+    "pnpm-workspace.yaml": "81e486ebe37f236f004d874187297c3f0e652f0077a9f5156f06225356889f94",
+    "AGENTS.md": "6f5f9c90b575b27a8f0e27e06c0364ea511e8b576258ee5712e5673fefae258f",
+    "workspace/README.md": "cb94fd49ef93d4fe234aec0cf4b422f52df2526cfc1551e80ee4c7eb4ce65291"
+  }
+}

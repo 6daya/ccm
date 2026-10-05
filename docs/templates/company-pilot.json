@@ -20,7 +20,7 @@
     "startedAt": null,
     "finishedAt": null,
     "ccmCommit": null,
-    "versions": {"opencode": null, "slim": null, "playwrightMcp": null, "os": null},
+    "versions": {"opencode": null, "ccmPlugin": null, "playwrightMcp": null, "os": null},
     "models": [],
     "repositories": [],
     "businessRulesAndAcceptanceDigest": null,

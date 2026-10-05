@@ -1,24 +1,23 @@
 {
   "name": "ccm",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "engines": {
     "node": "^22.22.2 || >=24.15.0"
   },
-  "description": "Content Creation Management: a local, free-first OpenCode workflow harness",
+  "description": "CCM: a local, free-first OpenCode V2 workflow harness",
   "bin": {
-    "ccm": "bin/cli.mjs",
-    "team-harness": "bin/cli.mjs"
+    "ccm": "bin/cli.mjs"
   },
   "scripts": {
     "test": "node --test tests/*.test.mjs",
     "eval": "node eval/run.mjs"
   },
   "dependencies": {
-    "@opencode-ai/plugin": "1.18.32",
     "@playwright/mcp": "0.0.83",
     "jsonc-parser": "3.3.1",
-    "oh-my-opencode-slim": "3.0.2"
+    "@opencode/plugin": "2.0.23",
+    "zod": "4.1.8"
   }
 }

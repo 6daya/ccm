@@ -15,7 +15,8 @@ const inside = (p,root) => p===root || p.startsWith(root+path.sep);
 export class Engine {
   constructor(directory,{config}={}) {
     this.directory=fs.realpathSync(directory);
-    this.dir=path.join(this.directory,'.team-harness');
+    this.dir=path.join(this.directory,'.ccm');
+    if(fs.existsSync(path.join(this.directory,'.team-harness','config.json')))throw Error('Legacy .team-harness workspace found; preserve it and initialize CCM 0.3 in a new directory. No V1 state migration or replay is supported.');
     this.config=normalizeConfig(this.directory,config||JSON.parse(fs.readFileSync(path.join(this.dir,'config.json'),'utf8')));
     this.validateConfig();
     if(!config)fs.mkdirSync(path.join(this.dir,'receipts'),{recursive:true});
@@ -120,7 +121,7 @@ export class Engine {
     need(this.config.roots.some(r=>inside(p,fs.realpathSync(r))),'Path is outside configured repositories');
     if(runID)need(this.scope(this.status(runID)).roots.some(root=>inside(p,root)),'Path is outside the active project');
     if(this.config.layout==='ccm-workspace')need(inside(p,path.join(this.directory,'workspace')),'CCM implementation is protected from business tasks');
-    need(!p.split(path.sep).some(x=>['.team-harness','.opencode','.git'].includes(x)),'Runtime/configuration paths are protected');
+    need(!p.split(path.sep).some(x=>['.ccm','.team-harness','.opencode','.git'].includes(x)),'Runtime/configuration paths are protected');
     need(!sensitivePath(p),'Sensitive credential paths are protected');
     let ancestor=p;while(!fs.existsSync(ancestor)) ancestor=path.dirname(ancestor);
     const actual=path.join(fs.realpathSync(ancestor),path.relative(ancestor,p));
@@ -133,7 +134,7 @@ export class Engine {
     need(canonical===path.resolve(root),'Symlink search roots are not allowed');
     need(this.config.roots.some(r=>inside(canonical,fs.realpathSync(r))),'Search outside repository roots');
     if(runID)need(this.scope(this.status(runID)).roots.some(root=>inside(canonical,root)),'Search outside the active project');
-    need(!canonical.split(path.sep).some(p=>['.git','.opencode','.team-harness','node_modules'].includes(p)),'Protected search root');
+    need(!canonical.split(path.sep).some(p=>['.git','.opencode','.ccm','.team-harness','node_modules'].includes(p)),'Protected search root');
     need(!sensitivePath(canonical),'Sensitive credential search roots are protected');
     need(typeof pattern==='string'&&pattern.length<=300&&Number.isInteger(maxResults)&&maxResults>=1&&maxResults<=80,'Invalid bounded search');
     need(['files','text'].includes(mode),'Search mode must be files or text');
@@ -141,7 +142,7 @@ export class Engine {
     const args=['--no-heading','--color','never'];
     if(glob){need(typeof glob==='string'&&glob.length<=200,'Invalid glob');args.push('-g',glob)}
     // Mandatory exclusions follow user glob so a broad include cannot override them.
-    args.push('-g','!**/.team-harness/**','-g','!**/.opencode/**','-g','!**/.git/**','-g','!**/node_modules/**',...sensitiveSearchArgs());
+    args.push('-g','!**/.ccm/**','-g','!**/.team-harness/**','-g','!**/.opencode/**','-g','!**/.git/**','-g','!**/node_modules/**',...sensitiveSearchArgs());
     if(mode==='files')args.push('--files','--null',canonical);else args.push('--json','--max-count','3','--',pattern,canonical);
     const out=spawnSync('rg',args,{encoding:'utf8',timeout:5000,maxBuffer:1e6});
     need(!out.error,'Search unavailable/too broad: install rg or narrow the scope');
@@ -230,7 +231,7 @@ export class Engine {
       const a={id:crypto.randomUUID(),run:runID,task:taskID,tier:t.tier,model:model.id,status:'prepared',reserve,settled:false,at:now(),promptHash:hash(prompt),contextDigests,evidenceIDs,reason,base:Object.fromEntries(t.writeFiles.map(f=>[f,fs.existsSync(f)?hash(fs.readFileSync(f)):null]))};
       if(t.role==='verifier')a.targetAttempt=r.tasks[t.target].attempts.at(-1)?.id;
       t.attempts.push(a);t.status='prepared';this.log(r,'prepared',{task:taskID,attempt:a.id,tier:t.tier,reserve});
-      return {run:runID,task:taskID,attempt:a.id,args:{description:'TH:'+a.id,prompt,subagent_type:'th-'+t.role,background:false}};
+      return {run:runID,task:taskID,attempt:a.id,args:{description:'TH:'+a.id,prompt,agent:'th-'+t.role,background:false}};
     });
   }
   locate(s,id) {if(!id)return null;for(const r of Object.values(s.runs))for(const t of Object.values(r.tasks)){const a=t.attempts.find(a=>a.id===id||a.session===id);if(a)return{r,t,a}}return null}
@@ -240,7 +241,7 @@ export class Engine {
       const {r,t,a}=x;need(r.session===parent,'Only the owning main session may dispatch');
       this.assertRunConfig(r);
       need(r.status==='active'&&t.status==='prepared'&&a.status==='prepared','Duplicate, cancelled, or invalid dispatch');
-      need(!args.task_id&&args.background!==true&&args.subagent_type==='th-'+t.role&&hash(args.prompt)===a.promptHash,'Task arguments do not match the immutable contract');
+      need(!args.sessionID&&!args.model&&!args.task_id&&!args.subagent_type&&args.background===false&&args.agent==='th-'+t.role&&hash(args.prompt)===a.promptHash,'Task arguments do not match the immutable contract');
       for(const [file,digest] of Object.entries(a.contextDigests||{}))need(fs.existsSync(file)&&hash(fs.readFileSync(file))===digest,'Project rules changed; re-prepare the task');
       const active=Object.values(s.runs).flatMap(x=>Object.values(x.tasks)).flatMap(x=>x.attempts).filter(x=>x.status==='running');
       need(active.filter(x=>x.tier===a.tier).length<(a.tier==='free'?this.config.limits.freeConcurrency:this.config.limits.paidConcurrency),'Concurrency limit reached at dispatch');
@@ -249,6 +250,13 @@ export class Engine {
     });
   }
   bind(id,session) {return this.transaction(s=>{const x=this.locate(s,id);if(!x)return;need(!x.a.session||x.a.session===session,'Attempt session mismatch');x.a.session=session;return x.a})}
+  admitPaidRequest(session) {
+    return this.transaction(s=>{
+      const x=this.locate(s,session);need(x&&x.a.tier==='expert'&&x.a.status==='running'&&x.r.status==='active','Paid request needs a live reserved expert attempt');
+      need(!x.a.requestIssued,'Paid transport replay denied; reconcile the original attempt before retry');
+      x.a.requestIssued=now();this.log(x.r,'paid-request-issued',{attempt:x.a.id});
+    });
+  }
   finish(id,output,error=false) {
     return this.transaction(s=>{
       const x=this.locate(s,id);need(x,'Unknown attempt');const {r,t,a}=x;
@@ -257,7 +265,7 @@ export class Engine {
       t.result=output;t.receipt=file;a.status=error?'failed':'completed';a.completed=now();
       a.settled=a.tier==='free'||(!error&&Object.values(s.usage).some(u=>u.session===a.session));
       if(r.status!=='cancelled')t.status=error?'failed':'verifying';
-      if(t.role==='verifier'&&!error){try{const text=output.match(/<task_result>([\s\S]*?)<\/task_result>/)?.[1]??output;t.verdict=JSON.parse(text.trim().replace(/^```(?:json)?\s*|\s*```$/g,''))}catch{t.verdict=null}}
+      if(t.role==='verifier'&&!error){try{const text=output;t.verdict=JSON.parse(text.trim().replace(/^```(?:json)?\s*|\s*```$/g,''))}catch{t.verdict=null}}
       this.log(r,'finished',{task:t.id,status:t.status,settled:a.settled});return t;
     });
   }

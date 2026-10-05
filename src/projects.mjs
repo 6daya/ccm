@@ -81,7 +81,7 @@ export function repositoryContext(engine,project,{files=[],runID}={}) {
  requireThat(files.length<=20,'Context accepts at most 20 relevant files');
  for(const file of files){engine.safePath(file,true,runID);requireThat(project.roots.some(root=>inside(file,root)),'Context file is outside the selected project')}
  let remaining=12000;
- return {project:project.id,name:project.name||project.id,roots:project.roots,execution:'CCM console; repository tools and registered checks explicitly target these roots. Native OpenCode Git/LSP remains attached to the CCM directory.',repositories:project.roots.map(root=>{
+ return {project:project.id,name:project.name||project.id,roots:project.roots,execution:'CCM console; repository tools and registered checks explicitly target these roots. Native OpenCode Git remains attached to CCM; V2 has no LSP, use registered typecheck/lint commands.',repositories:project.roots.map(root=>{
   const info={root,name:path.basename(root),git:inspectRepository(root),scripts:{},rules:[],notes:[]},pkg=path.join(root,'package.json');
   if(fs.existsSync(pkg))try{const data=JSON.parse(source(engine,pkg,200000,runID));info.name=String(data.name||info.name).slice(0,200);info.scripts=Object.fromEntries(Object.entries(data.scripts||{}).slice(0,20).map(([k,v])=>[k,String(v).slice(0,200)]))}catch(error){info.notes.push('package.json: '+error.message)}
   const dirs=new Set([root]);
@@ -107,7 +107,7 @@ export function gitView(engine,runID,{root,mode='status'}) {
   requireThat(names.status===0,'Git diff requires an existing HEAD and readable tracked changes');
   const files=names.stdout.split('\0').filter(Boolean).filter(file=>{
    const absolute=path.join(root,file);
-   if(sensitivePath(absolute)||absolute.split(path.sep).some(part=>['.git','.opencode','.team-harness','node_modules'].includes(part)))return false;
+   if(sensitivePath(absolute)||absolute.split(path.sep).some(part=>['.git','.opencode','.ccm','.team-harness','node_modules'].includes(part)))return false;
    if(!fs.existsSync(absolute))return true; // Deleted file: Git's committed content only.
    try{engine.safePath(absolute,false,runID);return true}catch{return false}
   });

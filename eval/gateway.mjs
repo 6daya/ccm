@@ -16,9 +16,9 @@ export async function gateway(root,browserCheck='browser',{project,topologyFiles
    let raw='';for await(const c of req)raw+=c;const body=JSON.parse(raw);
    const user=body.messages.filter(m=>m.role==='user').map(content).join('\n');
    let contract;
-   for(const m of body.messages.filter(m=>m.role==='user')){try{const j=JSON.parse(content(m));if(j.harness)contract=j}catch{}}
+   for(const m of body.messages.filter(m=>m.role==='user')){try{const j=JSON.parse(content(m).replace(/^You are a subagent spawned by another session.\n/,''));if(j.harness)contract=j}catch{}}
    // OpenCode wraps user text in multipart content; extract the JSON text if needed.
-   if(!contract)for(const m of body.messages.filter(m=>m.role==='user'))if(Array.isArray(m.content))for(const p of m.content){try{const j=JSON.parse(p.text);if(j.harness)contract=j}catch{}}
+   if(!contract)for(const m of body.messages.filter(m=>m.role==='user'))if(Array.isArray(m.content))for(const p of m.content){try{const j=JSON.parse(p.text.replace(/^You are a subagent spawned by another session.\n/,''));if(j.harness)contract=j}catch{}}
    let answer,role=contract?.harness.role||'coordinator',last=result(body);
    if(contract) {
     const key=contract.harness.run+':'+contract.harness.task+':'+contract.harness.attempt;
@@ -53,7 +53,7 @@ export async function gateway(root,browserCheck='browser',{project,topologyFiles
     if(last?.args)s.prepared=last.args;
     const r=s.run;
     const prepare=(id)=>call('harness_prepare',{run:r,task:id,evidenceIds:s.ev?[s.ev]:[],reason:id==='decision'?'boundary: free implementation crossed the documented owning module boundary':''});
-    const dispatch=()=>call('task',s.prepared);
+    const dispatch=()=>call('subagent',s.prepared);
     const plan=(id,role,extra)=>call('harness_plan',definition(r,id,role,extra));
     const accept=(id,review)=>call('harness_accept',{run:r,task:id,...review?{review}:{}});
     const topology=[

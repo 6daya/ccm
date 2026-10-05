@@ -1,6 +1,6 @@
 # 内部知识 MCP 接入验证
 
-日期：2026-10-04；状态：本地权限机制已检查，真实内部连接、检索与跨来源闭环未验证。不要把 Playwright 浏览器回执当作内部知识检索证据。
+更新：2026-10-06（OpenCode V2）；状态：本地权限机制已检查，真实内部连接、检索与跨来源闭环未验证。不要把 Playwright 浏览器回执当作内部知识检索证据。
 
 ## 当前代码边界
 
@@ -10,7 +10,9 @@ src/plugin.mjs 根据 config.mcpIds 向免费 scout 开放 `<ID>_*`，主代理�
 
 src/engine.mjs evidence 接受 `mcp://<已登记ID>/<来源路径>` 和最多 12000 字符的非空摘录，记录 digest、时间，provenance 明确为 agent-supplied。它验证 ID 与内容边界，没有将摘录绑定到某次原生知识 MCP 输出，不能证明 URI/正文来自真实服务。真实接入必须人工对照原始回执；需要程序级出处证明时，最小后续方案是捕获 scout 原生检索工具的工具名/参数/输出 digest 和调用 ID，让 evidence 引用该回执而非自由提供正文。这是未实现项，不能类比已绑定回执的 Playwright 检查。
 
-初始化可以确认 mcpIds；已初始化的 harness_register_project 只支持新增项目/命令检查，不支持新增 MCP、更新模型或修改既有规则。缺少新 MCP ID 的旧工作台应结束活动任务，在新 0.2.0 工作台用现有 provider/MCP 配置初始化；不要让业务代理直接编辑运行配置。
+初始化可以确认 mcpIds；已初始化的 harness_register_project 只支持新增项目/命令检查，不支持新增 MCP、更新模型或修改既有规则。缺少新 MCP ID 的旧工作台应结束活动任务，在新 0.3.0 工作台用现有 provider/MCP 配置初始化；不要让业务代理直接编辑运行配置。
+
+V2 配置位于 `mcp.servers.<ID>`，按 `disabled` 控制连接。CCM 对已登记端点设置 `codemode:false`，使用直接工具才能执行角色与步骤限制。不要把 V1 的 `enabled` 或默认 Code Mode 当作已核验配置。真实工具名称/权限仍须在公司环境检查。
 
 ## 司内小范围步骤
 

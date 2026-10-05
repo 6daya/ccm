@@ -1,5 +1,6 @@
 # CCM 0.2.0 工作台交付评估
 
+> 0.3.0 已改为 OpenCode V2；本文中的 0.1/0.2.x 版本与测试为历史记录。当前使用与限制见 [V2 交付](release-0.3.0.md)。
 日期：2026-10-04。交付形态：CCM 根目录启动 OpenCode，workspace/ 放置独立业务仓库；Jarvis 统一引导与交付。设计判断与旧版差距见 [工作台设计](workspace-design.md)。
 
 ## 结论

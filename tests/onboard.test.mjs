@@ -10,7 +10,7 @@ import {describeWorkspace} from '../src/workspace.mjs';
 function temporary(t){const root=fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(),'th-onboard-test-')));t.after(()=>fs.rmSync(root,{recursive:true,force:true}));return root}
 test('fresh downloaded workspace discovers bootstrap with no node_modules and no external imports',t=>{
  const root=temporary(t);
- for(const file of ['bin/onboard.mjs','src/defaults.mjs','src/projects.mjs','src/sensitive-paths.mjs','package.json','.opencode/opencode.jsonc','.opencode/agents/jarvis.md','.opencode/commands/onboard.md']){
+ for(const file of ['bin/onboard.mjs','src/defaults.mjs','src/environment.mjs','src/runtime.mjs','src/opencode-models.mjs','src/projects.mjs','src/sensitive-paths.mjs','package.json','.opencode/opencode.jsonc','.opencode/agents/jarvis.md','.opencode/commands/onboard.md']){
   fs.mkdirSync(path.dirname(path.join(root,file)),{recursive:true});fs.copyFileSync(path.join(packageRoot,file),path.join(root,file));
  }
  const r=spawnSync(process.execPath,['bin/onboard.mjs','probe'],{cwd:root,encoding:'utf8',timeout:30000});

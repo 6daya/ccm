@@ -8,7 +8,7 @@ function setup(t,options={}) {
  const root=fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(),'th-test-')));t.after(()=>fs.rmSync(root,{recursive:true,force:true}));
  const config={version:1,models:{free:{id:'internal/free',free:true},expert:{id:'internal/expert',free:false,price:{input:10,output:50,cacheRead:1,cacheWrite:10}}},roots:[root],mcpIds:['knowledge'],budget:{monthUsd:1000,runUsd:10},limits:{maxNodes:20,maxAttempts:2,freeConcurrency:2,paidConcurrency:1,maxPaidNodes:2,runMinutes:120,maxPacketChars:24000,systemReserveTokens:12000,expertOutputTokens:4000},checks:[{id:'check',cwd:root,argv:[process.execPath,'-e','console.log("verified")']}],...options};
  if(typeof options==='function')options(config,root);
- fs.mkdirSync(path.join(root,'.team-harness'));fs.writeFileSync(path.join(root,'.team-harness','config.json'),JSON.stringify(config));
+ fs.mkdirSync(path.join(root,'.ccm'));fs.writeFileSync(path.join(root,'.ccm','config.json'),JSON.stringify(config));
  fs.writeFileSync(path.join(root,'spec.md'),'Order logic belongs in apps/orders.\nCommon telemetry must remain business neutral.\n');
  const e=new Engine(root),r=e.start('root-session','fixture'),ev=e.evidence(r.id,{file:path.join(root,'spec.md'),start:1,end:2});return {root,e,r,ev};
 }
@@ -50,7 +50,7 @@ test('stale evidence, missing checks, and changed checked artifacts reject accep
  const file=path.join(root,'new.js');plan(e,r,'b','builder',{writeFiles:[file],checks:['check']});const b=dispatch(e,r,'b');e.write('child-'+b.attempt,file,'initial');e.finish(b.attempt,'candidate');const fresh=e.evidence(r.id,{file,start:1,end:1});plan(e,r,'v','verifier',{target:'b'});const v=dispatch(e,r,'v',[fresh.id]);e.finish(v.attempt,JSON.stringify({verdict:'pass',acceptance:{0:true},evidenceIds:[fresh.id]}));e.accept(r.id,'v');assert.throws(()=>e.accept(r.id,'b','v'),/check failed\/missing/);
 });
 test('protected config, path traversal and symlinks are refused',t=>{
- const {e,root}=setup(t);assert.throws(()=>e.safePath(path.join(root,'.team-harness/state.json')),/protected/);assert.throws(()=>e.safePath(path.join(root,'../outside')),/outside/);fs.symlinkSync('/etc/hosts',path.join(root,'link'));assert.throws(()=>e.safePath(path.join(root,'link')),/Symlink/);
+ const {e,root}=setup(t);assert.throws(()=>e.safePath(path.join(root,'.ccm/state.json')),/protected/);assert.throws(()=>e.safePath(path.join(root,'../outside')),/outside/);fs.symlinkSync('/etc/hosts',path.join(root,'link'));assert.throws(()=>e.safePath(path.join(root,'link')),/Symlink/);
 });
 test('cancellation blocks already prepared calls and late writes',t=>{
  const {e,r,root}=setup(t);plan(e,r,'a');const p=e.prepare(r.id,'a');e.cancel(r.id);assert.throws(()=>e.dispatch('root-session',p.args),/cancelled|invalid/i);

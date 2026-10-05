@@ -1,5 +1,6 @@
 # 体验与验收
 
+> 0.3.0 已改为 OpenCode V2；本文中的 0.1/0.2.x 版本与测试为历史记录。当前使用与限制见 [V2 交付](release-0.3.0.md)。
 ## 任务 A：跨仓链路与责任归属
 
 素材：CCM/workspace 下三个独立 Git 仓库 web、orders、payments。将它们明确登记为 orders-system 项目组，再从 CCM 根目录启动任务。eval 会创建这些素材，也可替换成你的真实仓库。

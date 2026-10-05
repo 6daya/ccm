@@ -4,6 +4,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {spawnSync} from 'node:child_process';
+import {requireV2,normalizeVersion,testedOpenCode} from '../src/runtime.mjs';
+import {inspectEnvironment,pnpmEntry} from '../src/environment.mjs';
+import {availableModels} from '../src/opencode-models.mjs';
 import {defaults} from '../src/defaults.mjs';
 import {discoverRepositories} from '../src/projects.mjs';
 const root=fs.realpathSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..'));
@@ -12,14 +15,6 @@ const output=x=>console.log(JSON.stringify(x,null,2));
 function version(binary,args=['--version']) {
  const r=spawnSync(binary,args,{encoding:'utf8',timeout:10000,maxBuffer:200000});
  return r.status===0?r.stdout.trim().slice(0,200):null;
-}
-function pnpmEntry() {
- if(process.platform!=='win32')return {binary:'pnpm',prefix:[]};
- // pnpm.cmd cannot be spawned with shell:false. Use a known JS entry instead.
- for(const dir of (process.env.PATH||'').split(path.delimiter))for(const relative of ['node_modules/pnpm/bin/pnpm.cjs','node_modules/corepack/dist/pnpm.js']) {
-  const file=path.join(dir,relative);if(fs.existsSync(file))return {binary:process.execPath,prefix:[file]};
- }
- throw Error('找不到可直接用 Node 启动的 pnpm。请由开发环境提供 pnpm 的 Node 入口；不会执行任意 cmd 包装脚本。');
 }
 function installed() {
  const expected=JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8')).dependencies;
@@ -33,13 +28,13 @@ async function main() {
  const deps=installed(),ready=Object.values(deps).every(x=>x.ready);
  if(cmd==='probe') {
   let pnpm=null;try{const p=pnpmEntry();pnpm=version(p.binary,[...p.prefix,'--version'])}catch{}
-  output({workspace:root,node:process.version,pnpm,opencode:version('opencode'),ripgrep:version('rg'),initialized:fs.existsSync(path.join(root,'.team-harness/config.json')),dependencies:deps,ready,
-   next:ready?'生成并核对 .team-harness/onboard.json，然后 apply':'使用已有公司 registry 执行 install；不要切换公共源'});return;
+  const opencode=version('opencode');
+  output({runtime:'v2-only',testedOpenCode,opencodeCompatible:normalizeVersion(opencode)?.startsWith('2.')===true,workspace:root,environment:inspectEnvironment(),node:process.version,pnpm,opencode,ripgrep:version('rg'),initialized:fs.existsSync(path.join(root,'.ccm/config.json')),dependencies:deps,ready,
+   next:ready?'生成并核对 .ccm/onboard.json，然后 apply':'缺失运行时先展示官方安装方案并确认；CCM 包使用已有公司 registry 执行 install，不换源'});return;
  }
  if(cmd==='models') {
-  const r=spawnSync('opencode',['models'],{cwd:root,encoding:'utf8',timeout:30000,maxBuffer:200000});
-  if(r.status!==0)throw Error('OpenCode 无法列出模型。请先完成已有公司 provider 配置；不读取或输出 API key。');
-  const ids=r.stdout.replace(/\x1b\[[0-9;]*m/g,'').split(/\r?\n/).filter(s=>/^[\w.-]+\/\S+$/.test(s));
+  requireV2(version('opencode'));
+  const ids=await availableModels(root);
   output({models:ids.slice(0,500),truncated:ids.length>500});return;
  }
  if(cmd==='example'){output(defaults(root));return}
@@ -54,8 +49,9 @@ async function main() {
  }
  if(cmd==='apply') {
   if(!ready)throw Error('依赖未就绪，先完成 install。');
-  if(fs.existsSync(path.join(root,'.team-harness/config.json')))throw Error('已初始化；不会覆盖规则或预算。使用 /workspace 查看当前规则。');
-  const file=path.join(root,'.team-harness/onboard.json');
+  requireV2(version('opencode'));
+  if(fs.existsSync(path.join(root,'.ccm/config.json')))throw Error('已初始化；不会覆盖规则或预算。使用 /workspace 查看当前规则。');
+  const file=path.join(root,'.ccm/onboard.json');
   if(fs.realpathSync(file)!==file)throw Error('Onboarding 配置不允许使用符号链接。');
   const config=JSON.parse(fs.readFileSync(file,'utf8'));
   const {Engine}=await import('../src/engine.mjs');

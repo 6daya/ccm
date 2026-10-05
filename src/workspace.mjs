@@ -10,5 +10,5 @@ export function describeWorkspace(engine) {
   mcpIds:c.mcpIds,protectedWriteRoots:c.protectedWriteRoots||[],checks:c.checks,browserOrigins:c.browserOrigins||[],
   sensitiveNames,archiveRoot:path.join(engine.dir,'archive'),delivery:'Business code/docs stay in their repository; successful runs automatically export a private report.md and manifest.json, no extra model calls.',
   maintenance:'Project registration is a separate approval-gated tool, blocked during active runs. Models, budgets and existing checks cannot be changed by registration.',
-  businessAgent:'jarvis',configurationFile:path.join(engine.dir,'config.json'),nativeRepositoryContext:'OpenCode native Git/LSP remains at CCM; harness_repository and check cwd explicitly target the selected business repositories.'};
+  businessAgent:'jarvis',configurationFile:path.join(engine.dir,'config.json'),nativeRepositoryContext:'OpenCode V2 native Git remains at CCM; V2 has no LSP; harness_repository and check cwd explicitly target the selected business repositories.'};
 }

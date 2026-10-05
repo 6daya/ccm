@@ -4,6 +4,7 @@ import path from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {createInterface} from 'node:readline/promises';
 import {stdin,stdout} from 'node:process';
+import {requireV2,normalizeVersion,testedOpenCode} from '../src/runtime.mjs';
 import {Engine} from '../src/engine.mjs';
 import {defaults,init,packageRoot} from '../src/init.mjs';
 import {describeWorkspace} from '../src/workspace.mjs';
@@ -22,7 +23,7 @@ async function main() {
    if(!value('free')) {
     const rl=createInterface({input:stdin,output:stdout});
     try {
-     console.log('只读取你已有的 OpenCode provider 配置。请使用 opencode models 显示的 provider/model ID；不会读取或保存 API key。');
+     console.log('只读取你已有的 OpenCode provider 配置。请使用 node bin/onboard.mjs models 稳定探测到的 provider/model ID；不会读取或保存 API key。');
      config.models.free.id=(await rl.question('免费主代理/执行模型 ID: ')).trim();
      const expert=(await rl.question('可选付费专家 ID（回车关闭）: ')).trim();
      if(expert){const p=JSON.parse(await rl.question('USD/百万 token 价格 JSON {"input":...,"output":...,"cacheRead":...,"cacheWrite":...}: '));config.models.expert={id:expert,free:false,price:p}}
@@ -51,12 +52,12 @@ async function main() {
  if(cmd==='doctor') {
   const e=new Engine(workspace),binary=value('opencode','opencode');
   const v=spawnSync(binary,['--version'],{encoding:'utf8',timeout:10000});
-  const notes=[];if(v.status!==0)notes.push('OpenCode not found: pass --opencode /absolute/path');else if(v.stdout.trim()!=='1.18.34')notes.push('Only OpenCode 1.18.34 is integration-tested; re-run eval for this version');
+  const notes=[];if(v.status!==0)notes.push('OpenCode not found: pass --opencode /absolute/path');else {requireV2(v.stdout);if(normalizeVersion(v.stdout)!==testedOpenCode)notes.push('Only OpenCode V2 '+testedOpenCode+' is integration-tested; re-run eval for this version')}
   if(!e.config.checks.length)notes.push('No executable checks registered: analysis tasks work, builders remain blocked');
   if(spawnSync('rg',['--version'],{encoding:'utf8',timeout:10000}).status!==0)notes.push('ripgrep not found: bounded local discovery requires rg on PATH');
   if(fs.existsSync(e.lock)){const l=JSON.parse(fs.readFileSync(e.lock,'utf8'));let live=true;try{process.kill(l.pid,0)}catch(err){live=err.code!=='ESRCH'};notes.push(`State lock PID ${l.pid}, live=${live}`);if(!live&&flag('repair-lock')){fs.unlinkSync(e.lock);notes.push('Removed stale process lock')}}
   const probe=await import('../src/plugin.mjs');
-  output({configValid:true,pluginImport:typeof probe.default==='function',opencode:v.stdout?.trim(),testedSlim:'3.0.2',testedPlaywrightMcp:'0.0.83',platform:process.platform,windowsLiveTested:false,models:e.config.models,roots:e.config.roots,mcpIds:e.config.mcpIds,checks:e.config.checks.map(c=>c.id),notes});return;
+  output({configValid:true,pluginImport:probe.default.id==='ccm.v2'&&typeof probe.default.setup==='function',opencode:v.stdout?.trim(),runtime:'v2-only',testedOpenCode,testedPlaywrightMcp:'0.0.83',platform:process.platform,windowsLiveTested:false,models:e.config.models,roots:e.config.roots,mcpIds:e.config.mcpIds,checks:e.config.checks.map(c=>c.id),notes});return;
  }
  if(cmd==='status'||cmd==='report') {
   const e=new Engine(workspace),state=e.read();const run=value('run');
@@ -77,8 +78,8 @@ async function main() {
  if(cmd==='reconcile') {
   const e=new Engine(workspace);output(e.reconcile(value('run'),value('task'),Number(value('usd')),value('note','')));return;
  }
- if(cmd==='cancel'){const e=new Engine(workspace);output(e.cancel(value('run')));console.log('本地已取消，写入/新派发会被拒绝。若 OpenCode 仍在线，在主会话说取消以主动 abort；供应商在途请求可能继续计费。');return}
+ if(cmd==='cancel'){const e=new Engine(workspace);output(e.cancel(value('run')));console.log('本地已取消，写入/新派发会被拒绝。若 OpenCode 仍在线，在主会话说取消以主动 interrupt；供应商在途请求可能继续计费。');return}
  if(cmd==='eval') {await import('../eval/run.mjs');return}
- console.log(`CCM 0.2.1 — OpenCode 1.18.34 / Slim 3.0.2\n\nnode ${path.join(packageRoot,'bin/cli.mjs')} init [--workspace PATH] [--free provider/model] [--config FILE]\n  projects | project-add --config FILE\n  example | doctor [--opencode PATH] [--repair-lock]\n  status [--run ID] | resume [--run ID] | report [--run ID] [--out FILE] | report --run ID --archive\n  reconcile --run ID --task ID --usd TOTAL --note GATEWAY_RECEIPT\n  cancel --run ID\n  eval\n\nAPI keys remain in your existing OpenCode provider config. No actual model is called by init or doctor.`);
+ console.log(`CCM 0.3.0 — OpenCode V2 2.0.23\n\nnode ${path.join(packageRoot,'bin/cli.mjs')} init [--workspace PATH] [--free provider/model] [--config FILE]\n  projects | project-add --config FILE\n  example | doctor [--opencode PATH] [--repair-lock]\n  status [--run ID] | resume [--run ID] | report [--run ID] [--out FILE] | report --run ID --archive\n  reconcile --run ID --task ID --usd TOTAL --note GATEWAY_RECEIPT\n  cancel --run ID\n  eval\n\nAPI keys remain in your existing OpenCode provider config. No actual model is called by init or doctor.`);
 }
-main().catch(e=>{console.error('Harness:',e.message);process.exitCode=1});
+main().catch(e=>{console.error('CCM:',e.message);process.exitCode=1});

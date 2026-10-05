@@ -1,13 +1,17 @@
 node_modules/
 /node_modules
 eval-results/
+.ccm/
+# Preserve and ignore legacy local state; no automatic V1 migration.
 .team-harness/
 
 artifacts/
 projects/
 workspace/*
 !workspace/README.md
+.ccm-init-*/
 .th-init-*/
+.ccm-onboard-*/
 .th-onboard-*/
 .opencode/plugins/
 .opencode/oh-my-opencode-slim.json
