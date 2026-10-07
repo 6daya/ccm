@@ -11,3 +11,5 @@
 - 原生 OpenCode Git 仍以 CCM 为目录；V2 不运行 LSP，须登记 typecheck/lint/编译命令；业务状态使用按仓库的 harness_repository，验收在明确的仓库 cwd 运行。
 - 接入须是独立 Git 根，展示已有 dirty 文件，不 reset。常见凭据路径由业务工具拒绝；可信 checks/MCP 仍由公司环境管理。
 - 正式成功 run 由程序自动私有归档，无额外模型请求。归档失败与业务 accepted 分开；只重试导出，不重跑已完成任务。代码/长期文档在业务仓库，经验按需维护，不能自动改变 AGENTS 或权限。
+
+用户明确发起 CCM 自身开发/维护任务时，先读 `docs/maintenance/README.md`，再读 `docs/maintenance/TODO.md` 的相关项；新会话可用 `docs/maintenance/HANDOFF.md`。核对实际 Git/源码与验证版本，保留 dirty，按影响范围验证并同步资料。普通业务对话不全量加载工程 TODO/历史研究；此入口不改变业务 Jarvis 的运行权限。
