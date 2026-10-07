@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>可视化文档：含图的四种预期效果</title>
+<style>
+:root { color-scheme:light dark; }
+body { margin:0; padding:24px; background:light-dark(#f0f3f5,#141b21); color:light-dark(#242b32,#edf1f4); font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC",sans-serif; }
+main { max-width:800px; margin:auto; }
+nav { display:flex; flex-wrap:wrap; gap:20px; margin:20px 0 32px; }
+nav a { color:inherit; text-underline-offset:4px; }
+h1 { font-size:26px; font-weight:500; margin-bottom:8px; }
+#visual-document-examples > section { margin-bottom:32px; }
+@media(max-width:520px) { body { padding:12px; } }
+@media print { body { padding:0; background:#fff; color:#202020; } nav { display:none; } }
+</style>
+</head>
+<body>
+<main>
+<h1>含图的四种静态视觉文档</h1>
+<p>按内容选择表达：流程看分支，方案看对照，改动看行为，数据看比例。所有案例均为演示材料，业务结论与验收结果需要真实来源支持。</p>
+<nav aria-label="案例目录"><a href="#architecture">分支流程图</a><a href="#comparison">方案比较</a><a href="#change-report">变更报告</a><a href="#data-chart">数量图表</a></nav>
+<div id="visual-document-examples" class="examples-document" aria-label="含图的四种静态视觉文档">
+  <section data-variant="架构说明" aria-label="架构说明案例" id="architecture">
+    <article class="vd-page">
+      <header class="vd-head"><span class="vd-eyebrow">架构说明 · 演示材料</span><h2>支付失败时，订单与库存如何对应？</h2><p class="vd-lead">把订单状态与库存动作放在一起读，才能看清成功路径、失败路径和补偿责任。</p></header>
+      <section class="vd-main"><h3>把成功与异常分支直接画出来</h3>
+        <figure class="vd-flow-figure">
+          <svg class="vd-flow vd-flow-wide" viewBox="0 0 640 310" role="img" aria-labelledby="vd-flow-title vd-flow-desc">
+            <title id="vd-flow-title">订单与库存的成功及取消路径</title><desc id="vd-flow-desc">订单待支付时库存已预留。支付成功时订单变为已支付并确认扣减库存；支付失败或超时取消时订单取消并释放预留。这是示意流程，最终状态与事件竞争仍需确认。</desc>
+            <defs><marker id="vd-flow-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 1 L 8 5 L 0 9" class="vd-arrow-head"/></marker></defs>
+            <rect class="vd-flow-node" x="220" y="10" width="200" height="62" rx="6"/>
+            <text x="320" y="36">订单待支付</text><text class="vd-svg-secondary" x="320" y="58">库存已预留</text>
+            <path class="vd-flow-edge" d="M320 72 V94" marker-end="url(#vd-flow-arrow)"/>
+            <path class="vd-flow-decision" d="M320 98 L392 143 L320 188 L248 143 Z"/>
+            <text x="320" y="149">支付结果？</text>
+            <path class="vd-flow-edge" d="M248 143 H115 V211" marker-end="url(#vd-flow-arrow)"/>
+            <path class="vd-flow-edge" d="M392 143 H525 V211" marker-end="url(#vd-flow-arrow)"/>
+            <text class="vd-svg-secondary" x="165" y="130">支付成功</text><text class="vd-svg-secondary" x="488" y="130">失败 / 超时取消</text>
+            <rect class="vd-flow-result" x="20" y="215" width="190" height="76" rx="6"/>
+            <text x="115" y="245">订单已支付</text><text class="vd-svg-secondary" x="115" y="270">库存确认扣减</text>
+            <rect class="vd-flow-node" x="430" y="215" width="190" height="76" rx="6"/>
+            <text x="525" y="245">订单取消</text><text class="vd-svg-secondary" x="525" y="270">释放库存预留</text>
+          </svg>
+          <svg class="vd-flow vd-flow-narrow" viewBox="0 0 300 340" role="img" aria-labelledby="vd-flow-small-title vd-flow-small-desc">
+            <title id="vd-flow-small-title">订单与库存的分支流程</title><desc id="vd-flow-small-desc">待支付订单对应已预留库存。支付成功后确认扣减；失败或超时取消后释放预留。示意流程的并发边界尚待确认。</desc>
+            <defs><marker id="vd-flow-small-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 0 1 L 8 5 L 0 9" class="vd-arrow-head"/></marker></defs>
+            <rect class="vd-flow-node" x="50" y="10" width="200" height="62" rx="6"/>
+            <text x="150" y="36">订单待支付</text><text class="vd-svg-secondary" x="150" y="59">库存已预留</text>
+            <path class="vd-flow-edge" d="M150 72 V98" marker-end="url(#vd-flow-small-arrow)"/>
+            <path class="vd-flow-decision" d="M150 102 L205 143 L150 184 L95 143 Z"/>
+            <text x="150" y="149">支付结果？</text>
+            <path class="vd-flow-edge" d="M95 143 H74 V249" marker-end="url(#vd-flow-small-arrow)"/>
+            <path class="vd-flow-edge" d="M205 143 H226 V249" marker-end="url(#vd-flow-small-arrow)"/>
+            <text class="vd-svg-secondary vd-svg-label" x="74" y="210">支付成功</text>
+            <text class="vd-svg-secondary vd-svg-label" x="226" y="203">失败 / 超时</text><text class="vd-svg-secondary vd-svg-label" x="226" y="224">取消</text>
+            <rect class="vd-flow-result" x="8" y="253" width="132" height="76" rx="6"/>
+            <text x="74" y="281">订单已支付</text><text class="vd-svg-secondary" x="74" y="306">确认扣减</text>
+            <rect class="vd-flow-node" x="160" y="253" width="132" height="76" rx="6"/>
+            <text x="226" y="281">订单取消</text><text class="vd-svg-secondary" x="226" y="306">释放预留</text>
+          </svg>
+          <figcaption>示意：预留、确认扣减与释放是不同动作，分支必须表达清楚。</figcaption>
+        </figure>
+        <div class="vd-explanation"><p><strong>读图重点：</strong>预留与扣减是不同动作。成功路径确认扣减，失败路径释放预留。</p><p><strong>实现条件：</strong>关联同一订单，事件可靠送达，重复事件的处理保持幂等。</p></div>
+      </section>
+      <aside class="vd-boundary"><h3>仍需确认的边界</h3><p>支付回调与超时取消同时发生时，谁决定最终状态？预留成功但创建订单失败时，谁负责释放？</p></aside>
+      <footer class="vd-foot">示意方案，尚未经业务或代码验证。完整成果应链接真实架构说明、接口契约与对应章节。</footer>
+    </article>
+  </section>
+  <section data-variant="方案比较" aria-label="方案比较案例" id="comparison">
+    <article class="vd-page">
+      <header class="vd-head"><span class="vd-eyebrow">方案比较 · 演示材料</span><h2>第一版应怎样承载复杂文档？</h2><p class="vd-lead">在“本地交付、优先阅读、无需在线服务”的示例前提下，优先选择静态 HTML。</p></header>
+      <section class="vd-main"><h3>按同一组条件比较</h3>
+        <div class="vd-table"><table><thead><tr><th scope="col">方案</th><th scope="col">最擅长</th><th scope="col">运行要求</th><th scope="col">主要边界</th></tr></thead><tbody>
+          <tr><th scope="row">Markdown</th><td>段落、列表、简单表格</td><td>已有阅读器</td><td>图示与排版取决于宿主</td></tr>
+          <tr class="vd-highlight"><th scope="row">静态 HTML</th><td>关系图、对照、阅读层级</td><td>普通浏览器</td><td>终端里需另行打开文件</td></tr>
+          <tr><th scope="row">交互应用</th><td>条件推演、持续状态</td><td>按方案配置运行环境</td><td>需要额外设计与维护</td></tr>
+        </tbody></table></div>
+        <div class="vd-explanation"><p><strong>推荐理由：</strong>当前目标是看懂复杂信息，静态页面已经能表达主线、关系和依据。</p><p><strong>改变选择的条件：</strong>需要修改参数并计算结果、持续保存多人操作，或与业务服务联动时，再评估应用方案。</p></div>
+      </section>
+      <aside class="vd-boundary"><h3>决策边界保持可见</h3><p>这是基于示例需求的设计建议。若用户必须在聊天窗口内阅读，需要先确认宿主是否支持网页预览。</p></aside>
+      <footer class="vd-foot">未虚构评分或开发工期。真实成果应注明比较口径、运行环境和来源。</footer>
+    </article>
+  </section>
+  <section data-variant="变更报告" aria-label="变更报告案例" id="change-report">
+    <article class="vd-page">
+      <header class="vd-head"><span class="vd-eyebrow">变更报告 · 演示材料</span><h2>重复提交订单的修复，应该改变什么？</h2><p class="vd-lead">用“触发情况 → 前后行为 → 验收依据”呈现改动，让读者核对业务结果。</p></header>
+      <section class="vd-main"><h3>把行为变化放到一起看</h3>
+        <div class="vd-before-after"><div><span class="vd-label">演示：修改前的缺陷</span><h4>网络超时后重试</h4><p>服务端把重试当成新请求，可能再次创建订单。</p></div><div><span class="vd-label">演示：修改后的目标</span><h4>复用同一幂等键</h4><p>相同键与请求内容返回同一订单，冲突内容被明确拒绝。</p></div></div>
+        <div class="vd-table"><table><thead><tr><th scope="col">建议验收情景</th><th scope="col">预期结果</th><th scope="col">实际验证</th></tr></thead><tbody>
+          <tr><td>同一键、相同内容重复请求</td><td>返回原有订单</td><td>待执行</td></tr>
+          <tr><td>同一键、不同内容请求</td><td>拒绝并提示冲突</td><td>待执行</td></tr>
+          <tr><td>两个请求同时使用同一键</td><td>只产生一个订单</td><td>待执行</td></tr>
+        </tbody></table></div>
+      </section>
+      <aside class="vd-boundary"><h3>尚不能据此认定修复完成</h3><p>还需确认客户端是否复用原键、服务端并发约束和幂等记录有效期。真实报告应链接对应 diff 与实际测试结果。</p></aside>
+      <footer class="vd-foot">行为与验收均为案例设计，未执行测试；“已验证”只能来自真实检查。</footer>
+    </article>
+  </section>
+  <section data-variant="数量图表" aria-label="数量图表案例" id="data-chart">
+    <article class="vd-page">
+      <header class="vd-head"><span class="vd-eyebrow">数量图表 · 人工示例数据</span><h2>一次访问的时间，主要花在哪里？</h2><p class="vd-lead">示例中，服务端等待占总耗时的 60%；图表可以定位较大的组成部分，原因仍需追踪证据。</p></header>
+      <section class="vd-main"><h3>各阶段耗时（ms）</h3>
+        <figure class="vd-bar-figure" aria-label="示例条形图：解析20毫秒，连接40毫秒，服务端等待180毫秒，页面渲染60毫秒；共同尺度为0至200毫秒。">
+          <div class="vd-bar-row"><span>解析</span><div class="vd-bar-track"><div class="vd-bar" style="width:10%"></div></div><span class="vd-bar-value">20 ms</span></div>
+          <div class="vd-bar-row"><span>连接</span><div class="vd-bar-track"><div class="vd-bar" style="width:20%"></div></div><span class="vd-bar-value">40 ms</span></div>
+          <div class="vd-bar-row"><span>服务端等待</span><div class="vd-bar-track"><div class="vd-bar vd-bar-major" style="width:90%"></div></div><span class="vd-bar-value">180 ms</span></div>
+          <div class="vd-bar-row"><span>页面渲染</span><div class="vd-bar-track"><div class="vd-bar" style="width:30%"></div></div><span class="vd-bar-value">60 ms</span></div>
+          <div class="vd-bar-axis"><span></span><div><span>0</span><span>100</span><span>200 ms</span></div><span></span></div>
+          <figcaption>共同尺度从零开始；条形长度与数值成比例。来源：人工示例数据，非真实测量。</figcaption>
+        </figure>
+        <div class="vd-explanation"><p><strong>读图结论：</strong>示例总耗时 300 ms，服务端等待为 180 ms，占 60%。</p><p><strong>解释边界：</strong>图显示构成，不能据此确定数据库、网络或业务代码中哪个环节导致等待。</p></div>
+      </section>
+      <aside class="vd-boundary"><h3>真实分析还需要来源与口径</h3><p>使用真实监控或追踪数据时，应注明时间范围、样本和计时方式。存在并行或重叠阶段时，不能直接把它们相加当作总耗时。</p></aside>
+      <footer class="vd-foot">本页仅演示数据如何成图；没有执行监控查询或性能测量。</footer>
+    </article>
+  </section>
+</div>
+<style>
+  #visual-document-examples { --vd-ink:light-dark(#242b32,#edf1f4); --vd-muted:light-dark(#5b6772,#b4c0cb); --vd-paper:light-dark(#fff,#1d242b); --vd-line:light-dark(#dbe2e8,#404b55); --vd-soft:light-dark(#f4f6f8,#26303a); --vd-accent:light-dark(#235b73,#b0d9eb); --vd-tint:light-dark(#eaf3f7,#223a48); --vd-warn:light-dark(#754a17,#e9c995); --vd-warn-bg:light-dark(#faf4e9,#342c20); color:var(--vd-ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC",sans-serif; font-size:16px; font-weight:400; line-height:1.65; color-scheme:light dark; }
+  #visual-document-examples * { box-sizing:border-box; }
+  #visual-document-examples [hidden] { display:none !important; }
+  #visual-document-examples > section[data-variant] { min-height:1030px; }
+  #visual-document-examples .vd-page { background:var(--vd-paper); border:1px solid var(--vd-line); border-radius:12px; padding:30px; min-height:1010px; }
+  #visual-document-examples .vd-eyebrow { display:block; color:var(--vd-muted); font-size:12px; margin-bottom:12px; }
+  #visual-document-examples h2 { font-size:26px; line-height:1.4; font-weight:500; margin:0 0 14px; }
+  #visual-document-examples h3 { font-size:18px; line-height:1.5; font-weight:500; margin:0 0 16px; }
+  #visual-document-examples h4 { font-size:16px; line-height:1.5; font-weight:500; margin:8px 0; }
+  #visual-document-examples strong { font-weight:500; }
+  #visual-document-examples p { margin:0 0 12px; }
+  #visual-document-examples .vd-lead { max-width:60ch; color:var(--vd-accent); margin:0; }
+  #visual-document-examples .vd-original { margin:25px 0 28px; padding:14px 18px; border-left:3px solid var(--vd-line); background:var(--vd-soft); font-size:14px; }
+  #visual-document-examples .vd-original p { color:var(--vd-muted); margin:7px 0 0; }
+  #visual-document-examples .vd-label { color:var(--vd-muted); font-size:12px; }
+  #visual-document-examples .vd-main { margin-bottom:25px; }
+  #visual-document-examples .vd-head + .vd-main { margin-top:28px; }
+  #visual-document-examples .vd-state-map { padding:16px 0; }
+  #visual-document-examples .vd-flow-figure,#visual-document-examples .vd-bar-figure { margin:16px 0; }
+  #visual-document-examples .vd-flow { display:block; width:100%; height:auto; }
+  #visual-document-examples .vd-flow-narrow { display:none; max-width:340px; margin:auto; }
+  #visual-document-examples .vd-flow text { fill:var(--vd-ink); text-anchor:middle; font-size:17px; font-weight:400; }
+  #visual-document-examples .vd-flow .vd-svg-secondary { fill:var(--vd-muted); font-size:16px; }
+  #visual-document-examples .vd-flow-node { fill:var(--vd-soft); stroke:var(--vd-line); stroke-width:1; }
+  #visual-document-examples .vd-flow-result { fill:var(--vd-tint); stroke:var(--vd-line); stroke-width:1; }
+  #visual-document-examples .vd-flow-decision { fill:var(--vd-paper); stroke:var(--vd-line); stroke-width:1.5; }
+  #visual-document-examples .vd-flow-edge { fill:none; stroke:var(--vd-muted); stroke-width:1.5; }
+  #visual-document-examples .vd-arrow-head { fill:var(--vd-muted); }
+  #visual-document-examples .vd-flow .vd-svg-label { paint-order:stroke; stroke:var(--vd-paper); stroke-width:7px; stroke-linejoin:round; }
+  #visual-document-examples figcaption { color:var(--vd-muted); font-size:12px; margin-top:12px; }
+  #visual-document-examples .vd-bar-row,#visual-document-examples .vd-bar-axis { display:grid; grid-template-columns:90px minmax(0,1fr) 58px; gap:12px; align-items:center; font-size:14px; margin:18px 0; }
+  #visual-document-examples .vd-bar-track { background:var(--vd-soft); height:22px; }
+  #visual-document-examples .vd-bar { background:var(--vd-muted); height:100%; }
+  #visual-document-examples .vd-bar-major { background:var(--vd-accent); }
+  #visual-document-examples .vd-bar-value { text-align:right; font-variant-numeric:tabular-nums; }
+  #visual-document-examples .vd-bar-axis { color:var(--vd-muted); font-size:12px; }
+  #visual-document-examples .vd-bar-axis > div { display:flex; justify-content:space-between; }
+  #visual-document-examples .vd-state-row { display:grid; grid-template-columns:44px minmax(0,1fr) 100px minmax(0,1fr); gap:10px; align-items:center; margin-bottom:12px; }
+  #visual-document-examples .vd-lane { font-size:14px; font-weight:500; }
+  #visual-document-examples .vd-node { padding:16px 10px; text-align:center; background:var(--vd-soft); border:1px solid var(--vd-line); border-radius:6px; }
+  #visual-document-examples .vd-end { background:var(--vd-tint); }
+  #visual-document-examples .vd-connector { font-size:12px; color:var(--vd-muted); text-align:center; }
+  #visual-document-examples .vd-failure { display:flex; flex-wrap:wrap; gap:16px; margin-left:54px; padding:12px 0; border-bottom:1px solid var(--vd-line); font-size:14px; }
+  #visual-document-examples .vd-failure span:first-child { color:var(--vd-muted); }
+  #visual-document-examples .vd-explanation { margin-top:16px; font-size:15px; }
+  #visual-document-examples .vd-table { margin-top:15px; }
+  #visual-document-examples table { width:100%; border-collapse:collapse; font-size:14px; }
+  #visual-document-examples th, #visual-document-examples td { padding:13px 9px; vertical-align:top; text-align:left; border-bottom:1px solid var(--vd-line); overflow-wrap:anywhere; }
+  #visual-document-examples th { font-weight:500; }
+  #visual-document-examples thead th { color:var(--vd-muted); font-size:12px; }
+  #visual-document-examples .vd-highlight { background:var(--vd-tint); }
+  #visual-document-examples .vd-boundary { margin:25px 0; padding:16px 18px; background:var(--vd-warn-bg); color:var(--vd-warn); border-radius:6px; }
+  #visual-document-examples .vd-boundary h3 { font-size:15px; margin:0 0 8px; }
+  #visual-document-examples .vd-boundary p { font-size:14px; margin:0; }
+  #visual-document-examples .vd-foot { padding-top:16px; border-top:1px solid var(--vd-line); color:var(--vd-muted); font-size:12px; }
+  #visual-document-examples .vd-before-after { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-bottom:18px; }
+  #visual-document-examples .vd-before-after > div { padding:15px; border-top:2px solid var(--vd-line); background:var(--vd-soft); }
+  #visual-document-examples .vd-before-after > div:last-child { border-top-color:var(--vd-accent); background:var(--vd-tint); }
+  #visual-document-examples .vd-before-after p { font-size:14px; margin:0; }
+  #visual-document-examples.examples-document > section[data-variant],#visual-document-examples.examples-document .vd-page { min-height:0; }
+  @media(max-width:650px) { #visual-document-examples .vd-flow-wide { display:none; } #visual-document-examples .vd-flow-narrow { display:block; } #visual-document-examples .vd-bar-row,#visual-document-examples .vd-bar-axis { grid-template-columns:72px minmax(0,1fr) 52px; gap:8px; font-size:13px; } #visual-document-examples .vd-bar-axis { font-size:12px; } }
+  @media(max-width:520px) { #visual-document-examples > section[data-variant] { min-height:1450px; } #visual-document-examples .vd-page { padding:20px; min-height:1430px; } #visual-document-examples h2 { font-size:23px; } #visual-document-examples .vd-state-row { grid-template-columns:36px minmax(0,1fr) 66px minmax(0,1fr); gap:5px; } #visual-document-examples .vd-node { padding:12px 5px; font-size:14px; } #visual-document-examples .vd-connector { font-size:12px; } #visual-document-examples .vd-failure { margin-left:41px; } #visual-document-examples th,#visual-document-examples td { padding:11px 4px; font-size:13px; } #visual-document-examples .vd-before-after { grid-template-columns:1fr; } }
+  @media print { #visual-document-examples { --vd-ink:#202020; --vd-muted:#505050; --vd-paper:#fff; --vd-line:#ccc; --vd-soft:#f4f4f4; --vd-accent:#202020; --vd-tint:#eee; --vd-warn:#202020; --vd-warn-bg:#f4f4f4; } #visual-document-examples > section[data-variant] { display:block !important; min-height:0; break-after:page; } #visual-document-examples .vd-page { border:0; padding:0; min-height:0; } #visual-document-examples .vd-boundary,#visual-document-examples tr,#visual-document-examples .vd-state-row { break-inside:avoid; } }
+</style>
+
+</main>
+</body>
+</html>
